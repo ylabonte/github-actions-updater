@@ -39,3 +39,20 @@ All CLI behavior, flags, exit codes, and output formats are unchanged.
 ```bash
 ghau -u --commit --no-edit    # CI-friendly: commits the prefilled message as-is
 ```
+
+### Also in this release: composite GitHub Action wrapper
+
+`github-actions-updater` is now consumable as a GitHub Action in addition to the npm CLI:
+
+```yaml
+- uses: ylabonte/github-actions-updater@v1
+  with:
+    write: true
+    commit: true
+```
+
+The Action is a composite that delegates to `npx github-actions-updater@<version>` — the npm package stays the single source of truth, no bundling, no committed JS blob. Inputs mirror the CLI flags one-to-one; the action also exposes `outdated`, `changes`, and `json` outputs for downstream composition. Pair with [`peter-evans/create-pull-request`](https://github.com/peter-evans/create-pull-request) for an auto-PR flow.
+
+The floating `v<major>` tag (e.g. `v1`) is force-pushed by the release workflow after each `pnpm release` succeeds, so `uses: ...@v1` always resolves to the latest 1.x.y.
+
+See the README's "Use as a GitHub Action" section and the [extended docs](https://ylabonte.github.io/github-actions-updater/guide/use-as-action) for recipes (auto-PR, drift report, hard CI gate, monorepo, version pinning).

@@ -33,6 +33,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - name: Create release PR or publish
+        id: changesets
         uses: changesets/action@v1
         with:
           publish: pnpm release
@@ -40,3 +41,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
+
+      # When a publish actually happened, force-push the floating major-version tag
+      # (e.g. v1 → the just-released v1.x.y) so users can do
+      # `uses: ylabonte/github-actions-updater@v1`. Exact-version tags (v1.2.3) are
+      # already created by changesets — this step only adds/moves the floating one.
+      # The major number is read from our own package.json, so there's no injection
+      # surface; the tag-push uses git's own argv splitting.
+      - name: Update floating v<major> tag
+        if: steps.changesets.outputs.published == 'true'
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          major="v${version%%.*}"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -f "$major"
+          git push origin "$major" --force

@@ -1,0 +1,59 @@
+name: Action self-test
+
+on:
+  pull_request:
+    paths:
+      - 'action.yml'
+      - '.github/workflows/action-selftest.yml'
+      - 'tests/fixtures/workflows/**'
+  workflow_dispatch:
+
+# Read-only is enough — the self-test scans, doesn't write or commit.
+permissions:
+  contents: read
+
+jobs:
+  selftest:
+    name: Run the local composite action against fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # Lay down a temp workspace whose layout matches what `uses: ./` will scan when
+      # invoked from the action's repo. We point the action at a per-job `.github/workflows/`
+      # directory full of fixtures, then assert the JSON output mentions the expected actions
+      # without depending on what's actually outdated upstream.
+      - name: Prepare fixture workflow
+        run: |
+          set -euo pipefail
+          mkdir -p .selftest/.github/workflows
+          cat > .selftest/.github/workflows/sample.yml <<'EOF'
+          name: sample
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v3
+                - uses: actions/setup-node@v3.8.2
+          EOF
+
+      # NOTE: we deliberately do NOT pass `version:` here so the action runs against the
+      # latest published npm version. To test an unreleased local build, switch to a
+      # `pack + file:` install (out of scope for the first iteration of this workflow).
+      - name: Run the action
+        id: ghau
+        uses: ./
+        with:
+          workflows: ${{ github.workspace }}/.selftest/.github/workflows
+
+      - name: Assert outputs are present and well-formed
+        env:
+          OUTDATED: ${{ steps.ghau.outputs.outdated }}
+          JSON_PATH: ${{ steps.ghau.outputs.json }}
+        run: |
+          set -euo pipefail
+          test -n "$OUTDATED" || { echo "::error::outdated output is empty"; exit 1; }
+          test -f "$JSON_PATH" || { echo "::error::json output path missing"; exit 1; }
+          jq -e '.entries[] | select(.action == "actions/checkout")' "$JSON_PATH" \
+            || { echo "::error::expected actions/checkout entry in JSON output"; cat "$JSON_PATH"; exit 1; }
+          echo "✓ self-test passed — outdated=$OUTDATED"
