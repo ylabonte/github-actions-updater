@@ -52,6 +52,13 @@ jobs:
           version: pnpm exec changeset version
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          # Temporary: bootstraps the first publish of the package (npm
+          # trusted publishing can only be configured for packages that
+          # already exist on the registry). Revert this line and delete the
+          # NPM_TOKEN repo secret once 1.0.0 is on npm and the trusted
+          # publisher has been configured on npmjs.org. changesets/action
+          # prefers NPM_TOKEN when set and falls back to OIDC otherwise.
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
 
       # When a publish actually happened, force-push the floating major-version tag
