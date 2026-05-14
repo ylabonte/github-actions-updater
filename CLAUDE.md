@@ -51,16 +51,33 @@ For any work that's more than a one-line change:
 
 This is what the user sees as progress; without it, the session feels opaque.
 
-### Changesets — interactive
+### Changesets — user-relevant only, and interactive
 
-When making user-visible changes, a changeset entry is required (the release pipeline
-keys off them). **But always ask the user before adding or modifying one.** Format:
+**Changesets exist for changes the user (= the npm/Action consumer) will notice or
+care about.** Examples that warrant an entry: new flags, behavior changes, bug fixes
+visible from the outside, breaking renames. Examples that do **not** warrant an entry,
+and should never end up in `CHANGELOG.md`: process / workflow / CLAUDE.md updates,
+internal refactors that preserve public behavior, test-only changes, lockfile bumps,
+dev-dependency upgrades, CI tweaks, formatting passes. When unsure, ask: "would this
+change appear in the changelog of any other npm package shipping the same fix?" — if
+not, no changeset.
 
-> "I have these user-visible changes for the changeset: <list>. Want me to add them to
-> the existing `.changeset/<file>.md`, create a new one, or leave the changeset alone?"
+When a change does warrant a changeset, **always ask the user before adding or
+modifying one** via `AskUserQuestion`, with the proposed entry body in the option
+`preview`. This is the same shape as commit confirmation:
 
-Reasoning: the user may be batching related work into a single release, or may be
-preparing a different cut. Don't decide for them.
+- Question: `"Add (or extend) a changeset entry for this change?"`
+- One option `Approve` whose `preview` is the full proposed Markdown — frontmatter
+  (`'github-actions-updater': major|minor|patch`) plus the body.
+- One option `Alter` — when chosen, ask what to change, then re-issue.
+- One option `Skip` — explicitly choose to ship the change with no changeset entry
+  (the right call for non-user-visible work).
+- One option `Cancel` — back out without committing the calling change either.
+
+Don't create a `.changeset/*.md` file from Bash before this prompt has been approved.
+The reason this is interactive: the user may be batching related work into a single
+release, may be preparing a different cut, or may judge the change to be invisible
+enough not to need an entry. Don't decide for them.
 
 ### Code review mindset — every change
 
@@ -185,49 +202,63 @@ The default-0 is deliberate — see the changeset for `--fail-on-outdated`. Don'
 - Body explains _why_, not what — the diff already says what.
 - Never `--no-verify`, never `--force` without explicit user authorization.
 
-### Confirm before commits and pushes — always, via `AskUserQuestion`
+### Confirm before externally-visible actions — always, via `AskUserQuestion`
 
-Even in auto/yolo mode, `git commit` and `git push` must be confirmed by the user. The
-confirmation must use `AskUserQuestion` with the commit message (or, for push, the list
-of commits being pushed) rendered in an option `preview`. Plain Y/N harness prompts via
-`permissions.ask` are explicitly removed — the rich preview is the whole point.
+Even in auto/yolo mode, any action that's visible to others or hard to fully undo must
+be confirmed by the user via `AskUserQuestion`, with the full content of the action
+rendered in an option `preview`. Plain Y/N harness prompts via `permissions.ask` are
+explicitly removed — the rich preview is the whole point.
 
-**Shape of the prompt for `git commit`:**
+The rule applies to:
 
-- Question: short, e.g. `"Commit these changes?"`
-- One option labelled `Approve` (or similar) whose `preview` is the full multi-line
-  commit message you're about to use. Arrow keys navigate; Enter selects.
-- One option labelled `Alter the message` — when chosen, follow up by asking what to
-  change, then re-issue the question with the revised preview.
-- One option labelled `Cancel` — when chosen, do nothing and tell the user so.
+- `git commit` — preview is the commit message you're about to use.
+- `git push` — preview is the list of commits leaving the local machine.
+- `gh pr create` — preview is the **PR title plus the full body**.
+- `gh pr edit` — preview is the resulting title/body (the new state, not the diff).
+- `gh pr comment`, `gh pr review` — preview is the comment / review body.
+- `gh pr merge`, `gh pr close`, `gh pr reopen` — preview is a short statement of which
+  PR changes state and how (e.g. `#42 → merged via squash`). No `Alter` option.
+- `gh issue create` / `edit` / `comment` / `close` / `reopen` — same shape as PR.
+- Adding or modifying a `.changeset/*.md` file — see the "Changesets — user-relevant
+  only, and interactive" section above; the prompt shape is the same.
+- Anything posting to a third-party service (Slack, gist, paste, registry).
 
-**Shape of the prompt for `git push`:**
+If you're touching shared state — or about to write something that'll appear in a
+public changelog — ask first.
 
-- Question: e.g. `"Push to <branch>?"`
-- One option `Approve` whose `preview` is the output of `git log @{upstream}..HEAD
---oneline --decorate` (or, for a new branch, `git log -<N> --oneline`), so the user
-  sees exactly which commits leave the local machine.
-- One option `Cancel`.
-- No `Alter` option for push — the commits are already shaped; if the user wants to
-  change them, they pick `Cancel`, then ask for amends explicitly.
+**Shape of the prompt:**
 
-**Example call:**
+| Action kind                | Option set                                                                                                                | Preview content                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Commit                     | `Approve` / `Alter the message` / `Cancel`                                                                                | Full commit message.                                                                               |
+| Push                       | `Approve` / `Cancel`                                                                                                      | `git log @{upstream}..HEAD --oneline --decorate` (or, for a new branch, `git log -<N> --oneline`). |
+| PR create                  | `Approve` / `Alter title` / `Alter body` / `Cancel` (use multiSelect=false; pick the most-likely-to-be-asked-for `Alter`) | `<title>\n\n<full body>`.                                                                          |
+| PR edit / comment / review | `Approve` / `Alter the body` / `Cancel`                                                                                   | The new title+body or comment body.                                                                |
+| PR / issue state change    | `Approve` / `Cancel`                                                                                                      | One-line statement (`#42 → closed`, `#42 → merged via squash and merge`).                          |
+| Changeset add / edit       | `Approve` / `Alter` / `Skip` / `Cancel`                                                                                   | Full proposed `.changeset/*.md` content (frontmatter + body).                                      |
+
+When the user picks `Alter ...`, follow up by asking what to change (or ask for new
+text outright), then re-issue the same question with the revised preview. **Never**
+execute the underlying command before this prompt has been approved.
+
+**Example call (PR create):**
 
 ```ts
 AskUserQuestion({
   questions: [
     {
-      question: 'Commit these changes?',
-      header: 'Commit',
+      question: 'Open this PR?',
+      header: 'PR',
       multiSelect: false,
       options: [
         {
           label: 'Approve',
-          description: 'Commit with the message shown.',
-          preview: '<full commit message here>',
+          description: 'Open the PR with the title and body shown.',
+          preview: 'feat(cli): --no-edit flag for non-interactive commits\n\n…full body…',
         },
-        { label: 'Alter the message', description: 'Tell me what to change in the next message.' },
-        { label: 'Cancel', description: 'Leave the staged changes in place; do not commit.' },
+        { label: 'Alter title', description: 'Give me a new title; body stays.' },
+        { label: 'Alter body', description: 'Give me a new body; title stays.' },
+        { label: 'Cancel', description: 'Do not open the PR.' },
       ],
     },
   ],
@@ -236,10 +267,11 @@ AskUserQuestion({
 
 Rules:
 
-- **Never** invoke `git commit` or `git push` from Bash before this prompt has been
+- **Never** invoke any of the above commands from Bash before the prompt has been
   approved. The prompt is the only sanity check on irreversible-ish actions.
-- If you want to commit several things in rapid succession, **batch** the diff into one
-  logical commit rather than spamming prompts.
+- If you want to perform several similar mutations in rapid succession (multiple
+  commits, multiple comments), **batch** them into one logical unit when possible
+  rather than spamming prompts.
 - The harness-level `permissions.ask` was intentionally removed from
   `.claude/settings.local.json` to avoid double-prompting. If you decide you want the
   belt-and-braces backstop, the original block is documented as a comment in that file.
