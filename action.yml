@@ -78,10 +78,10 @@ runs:
       run: |
         set -euo pipefail
 
-        # Inputs reach the script through env vars (never inline interpolation into bash
-        # via ${{ }}) so action-name globs and similar attacker-controllable values can't
-        # be parsed as shell. Each is then pushed onto an args array, so npx receives them
-        # as separate argv entries — no shell re-parsing.
+        # Inputs reach the script through env vars set above (GHAU_*), never inline via
+        # the template expression syntax, so action-name globs and similar attacker-
+        # controllable values can't be shell-parsed. Each value is then pushed onto an
+        # args array, so npx receives them as separate argv entries — no shell re-parsing.
         args=(--json --target "$GHAU_TARGET")
         if [[ -n "$GHAU_FILTER"            ]]; then
           # Word-split intentional: filter/reject accept multiple globs.
