@@ -1,0 +1,106 @@
+name: github-actions-updater
+description: Scan .github/workflows for outdated remote action references; optionally apply updates and produce a non-interactive commit.
+author: Yannic Labonte
+
+branding:
+  icon: refresh-cw
+  color: blue
+
+inputs:
+  version:
+    description: 'npm tag or version of github-actions-updater to run via `npx`.'
+    required: false
+    default: latest
+  target:
+    description: 'Update target policy: latest, major, minor, patch, greatest.'
+    required: false
+    default: latest
+  filter:
+    description: 'Space-separated globs of action names to include (e.g. "actions/*").'
+    required: false
+    default: ''
+  reject:
+    description: 'Space-separated globs of action names to exclude (e.g. "docker://**").'
+    required: false
+    default: ''
+  workflows:
+    description: 'Override the .github/workflows directory.'
+    required: false
+    default: ''
+  write:
+    description: 'Apply updates to workflow files (--write).'
+    required: false
+    default: 'false'
+  commit:
+    description: 'After --write, stage the changes and produce a non-interactive commit. Implies --no-edit.'
+    required: false
+    default: 'false'
+  allow-branch-pin:
+    description: 'On --write, convert branch refs to pinned SHAs.'
+    required: false
+    default: 'false'
+  fail-on-outdated:
+    description: 'Exit non-zero when outdated entries are found.'
+    required: false
+    default: 'false'
+  github-token:
+    description: 'Token used for GitHub API auth.'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  outdated:
+    description: 'Number of outdated references found.'
+    value: ${{ steps.run.outputs.outdated }}
+  changes:
+    description: 'Number of files modified (only when write=true).'
+    value: ${{ steps.run.outputs.changes }}
+  json:
+    description: 'Path to the JSON report file the action produced.'
+    value: ${{ steps.run.outputs.json }}
+
+runs:
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GHAU_VERSION: ${{ inputs.version }}
+        GHAU_TARGET: ${{ inputs.target }}
+        GHAU_FILTER: ${{ inputs.filter }}
+        GHAU_REJECT: ${{ inputs.reject }}
+        GHAU_WORKFLOWS: ${{ inputs.workflows }}
+        GHAU_WRITE: ${{ inputs.write }}
+        GHAU_COMMIT: ${{ inputs.commit }}
+        GHAU_ALLOW_BRANCH_PIN: ${{ inputs.allow-branch-pin }}
+        GHAU_FAIL_ON_OUTDATED: ${{ inputs.fail-on-outdated }}
+      run: |
+        set -euo pipefail
+
+        # Inputs reach the script through env vars (never inline interpolation into bash
+        # via ${{ }}) so action-name globs and similar attacker-controllable values can't
+        # be parsed as shell. Each is then pushed onto an args array, so npx receives them
+        # as separate argv entries — no shell re-parsing.
+        args=(--json --target "$GHAU_TARGET")
+        if [[ -n "$GHAU_FILTER"            ]]; then
+          # Word-split intentional: filter/reject accept multiple globs.
+          # shellcheck disable=SC2206
+          extra=($GHAU_FILTER); args+=(--filter "${extra[@]}")
+        fi
+        if [[ -n "$GHAU_REJECT"            ]]; then
+          # shellcheck disable=SC2206
+          extra=($GHAU_REJECT); args+=(--reject "${extra[@]}")
+        fi
+        [[ -n "$GHAU_WORKFLOWS"           ]] && args+=(--workflows "$GHAU_WORKFLOWS")
+        [[ "$GHAU_WRITE"            == "true" ]] && args+=(--write)
+        [[ "$GHAU_COMMIT"           == "true" ]] && args+=(--commit --no-edit)
+        [[ "$GHAU_ALLOW_BRANCH_PIN" == "true" ]] && args+=(--allow-branch-pin)
+        [[ "$GHAU_FAIL_ON_OUTDATED" == "true" ]] && args+=(--fail-on-outdated)
+
+        report="$RUNNER_TEMP/ghau.json"
+        npx -y "github-actions-updater@$GHAU_VERSION" "${args[@]}" | tee "$report"
+
+        echo "json=$report"                                                          >> "$GITHUB_OUTPUT"
+        echo "outdated=$(jq '.summary.outdated' "$report")"                          >> "$GITHUB_OUTPUT"
+        echo "changes=$(jq '[.entries[] | select(.outdated)] | length' "$report")"   >> "$GITHUB_OUTPUT"

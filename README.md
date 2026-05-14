@@ -48,6 +48,44 @@ Exit codes:
 | `1`  | At least one resolution errored (and not every resolution did), or `--fail-on-outdated` was set and outdated entries exist. |
 | `2`  | Every resolution errored — usually auth or network.                                                                         |
 
+## Use as a GitHub Action
+
+`github-actions-updater` is also a composite GitHub Action — the same CLI, wrapped so you can drop it into any workflow:
+
+```yaml
+- uses: ylabonte/github-actions-updater@v1
+  with:
+    write: true
+    commit: true
+```
+
+Pair it with [`peter-evans/create-pull-request`](https://github.com/peter-evans/create-pull-request) for an auto-PR workflow that bumps your actions on a schedule — full recipe in the [extended docs](https://ylabonte.github.io/github-actions-updater/guide/use-as-action).
+
+### Inputs
+
+| Name               | Default             | Description                                                                                   |
+| ------------------ | ------------------- | --------------------------------------------------------------------------------------------- |
+| `version`          | `latest`            | npm tag or version of `github-actions-updater` to run via `npx`.                              |
+| `target`           | `latest`            | Update target policy: `latest`, `major`, `minor`, `patch`, `greatest`.                        |
+| `filter`           | _(none)_            | Space-separated globs of action names to include (e.g. `actions/*`).                          |
+| `reject`           | _(none)_            | Space-separated globs of action names to exclude (e.g. `docker://**`).                        |
+| `workflows`        | `.github/workflows` | Override the workflows directory.                                                             |
+| `write`            | `false`             | Apply updates to workflow files (`--write`).                                                  |
+| `commit`           | `false`             | After `--write`, stage the changes and produce a non-interactive commit. Implies `--no-edit`. |
+| `allow-branch-pin` | `false`             | On `--write`, convert branch refs to pinned SHAs.                                             |
+| `fail-on-outdated` | `false`             | Exit non-zero when outdated entries are found.                                                |
+| `github-token`     | `github.token`      | Token for GitHub API auth. Defaults to the workflow's auto-provided `github.token`.           |
+
+### Outputs
+
+| Name       | Description                                                                                                       |
+| ---------- | ----------------------------------------------------------------------------------------------------------------- |
+| `outdated` | Number of outdated references found in the scan.                                                                  |
+| `changes`  | Number of entries that were rewritten (only meaningful when `write: true`).                                       |
+| `json`     | Path to the JSON report file the action produced. Suitable for `jq` post-processing or `actions/upload-artifact`. |
+
+See [Use as a GitHub Action](https://ylabonte.github.io/github-actions-updater/guide/use-as-action) for more recipes: drift-only PR comments, hard CI gates, monorepo splits, pinning strategies.
+
 ## Reference styles supported
 
 | Style                 | Example                              |

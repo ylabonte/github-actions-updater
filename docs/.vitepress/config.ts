@@ -36,6 +36,7 @@ export default defineConfig({
         {
           text: 'Workflows',
           items: [
+            { text: 'Use as a GitHub Action', link: '/guide/use-as-action' },
             { text: 'SHA pinning', link: '/guide/sha-pinning' },
             { text: 'Config file', link: '/guide/config-file' },
             { text: 'Authentication', link: '/guide/authentication' },
