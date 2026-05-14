@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import path from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -83,7 +83,7 @@ describe('commitUpdates (no-op paths)', () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'gau-commit-test-'));
+    cwd = await mkdtemp(path.join(tmpdir(), 'gau-commit-test-'));
   });
 
   afterEach(async () => {
@@ -107,8 +107,8 @@ describe('commitUpdates (no-op paths)', () => {
     await run('git', ['init', '-b', 'main', '--quiet', cwd], { cwd });
     await run('git', ['config', 'user.email', 'test@example.com'], { cwd });
     await run('git', ['config', 'user.name', 'Test'], { cwd });
-    await mkdir(join(cwd, 'wf'), { recursive: true });
-    const file = join(cwd, 'wf', 'ci.yml');
+    await mkdir(path.join(cwd, 'wf'), { recursive: true });
+    const file = path.join(cwd, 'wf', 'ci.yml');
     await writeFile(file, 'jobs:\n  x:\n    steps:\n      - uses: actions/checkout@v4.2.0\n');
 
     const resolution: Resolution = {
@@ -137,19 +137,21 @@ describe('commitUpdates (no-op paths)', () => {
     const templateArg = capturedArgs?.[3];
     expect(templateArg?.includes('gau-commit-')).toBe(true);
 
-    // Staged file should appear in the index.
+    // Staged file should appear in the index. Git emits POSIX-style paths on every platform,
+    // so we normalize our expectation through path.relative + replace.
     const { stdout: staged } = await run('git', ['diff', '--cached', '--name-only', '--', file], {
       cwd,
     });
-    expect(staged.trim()).toBe(file.replace(cwd + '/', ''));
+    const expected = path.relative(cwd, file).split(path.sep).join('/');
+    expect(staged.trim()).toBe(expected);
   });
 
   it('reports non-zero exit code from injected spawn', async () => {
     await run('git', ['init', '-b', 'main', '--quiet', cwd], { cwd });
     await run('git', ['config', 'user.email', 'test@example.com'], { cwd });
     await run('git', ['config', 'user.name', 'Test'], { cwd });
-    await mkdir(join(cwd, 'wf'), { recursive: true });
-    const file = join(cwd, 'wf', 'ci.yml');
+    await mkdir(path.join(cwd, 'wf'), { recursive: true });
+    const file = path.join(cwd, 'wf', 'ci.yml');
     await writeFile(file, 'jobs:\n  x:\n    steps:\n      - uses: actions/checkout@v4.2.0\n');
 
     const resolution: Resolution = {
