@@ -8,6 +8,8 @@ import { createGitHubClient } from './core/resolver/github-client.js';
 import { createDockerHubClient } from './core/resolver/docker-resolver.js';
 import { runPipeline } from './core/pipeline.js';
 
+import { confirm, isCancel } from '@clack/prompts';
+
 import { applyUpdates } from './commands/update.js';
 import { runInteractive } from './commands/interactive.js';
 import { commitUpdates } from './commands/git-commit.js';
@@ -117,6 +119,20 @@ export async function main(argv: readonly string[]): Promise<number> {
         );
       }
       if (opts.commit) {
+        // Pause so the user can actually look at the table before the editor takes over the
+        // screen. Skipped when there's no TTY (CI) or when emitting JSON (machine flows).
+        // The `-i` path doesn't need this — the multiselect already gave the user a chance to
+        // review and choose.
+        if (process.stdin.isTTY && !opts.json) {
+          const proceed = await confirm({
+            message: 'Open the editor to review and confirm the commit message?',
+            initialValue: true,
+          });
+          if (isCancel(proceed) || !proceed) {
+            process.stderr.write(pc.yellow('⚠ Skipped commit: cancelled.\n'));
+            return 0;
+          }
+        }
         await runCommit(outcome.applied);
       }
       return 0;
