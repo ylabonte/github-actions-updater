@@ -186,7 +186,25 @@ runs:
         #   - `--write` without `--commit`: rewrites sit in the working tree;
         #     diff against the index gives them.
         # `wf_dir%/` strips a trailing slash so the pathspec stays clean.
+        # Git pathspecs are repo-relative, so normalize absolute workflow
+        # directories under the repo root back to a relative path before diffing.
+        # If an absolute path points outside the repo, fall back to the default
+        # scoped directory instead of passing an invalid pathspec to Git.
         wf_dir="${GHAU_WORKFLOWS:-.github/workflows}"
+        wf_dir="${wf_dir%/}"
+        if git rev-parse --git-dir >/dev/null 2>&1; then
+          top=$(git rev-parse --show-toplevel 2>/dev/null || true)
+          if [[ "$wf_dir" = /* && -n "$top" ]]; then
+            top="${top%/}"
+            if [[ "$wf_dir" == "$top" ]]; then
+              wf_dir="."
+            elif [[ "$wf_dir" == "$top/"* ]]; then
+              wf_dir="${wf_dir#"$top"/}"
+            else
+              wf_dir=".github/workflows"
+            fi
+          fi
+        fi
         wf_dir="${wf_dir%/}"
         changes=0
         if [[ "$GHAU_WRITE" == "true" ]] && git rev-parse --git-dir >/dev/null 2>&1; then
