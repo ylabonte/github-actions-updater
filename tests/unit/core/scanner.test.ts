@@ -29,7 +29,7 @@ describe('scanWorkflows', () => {
     await writeFile(join(wf, 'README.md'), '# not a workflow\n');
 
     const files = await scanWorkflows({ cwd });
-    expect(files.map((f) => f.relativePath).sort()).toEqual([
+    expect(files.map((f) => f.relativePath).toSorted()).toEqual([
       '.github/workflows/ci.yml',
       '.github/workflows/release.yaml',
     ]);
@@ -55,6 +55,15 @@ describe('scanWorkflows', () => {
       '.github/workflows/m.yml',
       '.github/workflows/z.yml',
     ]);
+  });
+
+  it('returns POSIX-style relativePath on all platforms', async () => {
+    const wf = join(cwd, '.github', 'workflows');
+    await mkdir(wf, { recursive: true });
+    await writeFile(join(wf, 'a.yml'), '');
+    const files = await scanWorkflows({ cwd });
+    expect(files[0]?.relativePath).toBe('.github/workflows/a.yml');
+    expect(files[0]?.relativePath).not.toContain('\\');
   });
 
   it('skips subdirectories', async () => {

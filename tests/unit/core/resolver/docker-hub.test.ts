@@ -15,10 +15,7 @@ describe('createDockerHubClient', () => {
       { results: [{ name: '1.2' }], next: null },
     ];
     let i = 0;
-    globalThis.fetch = vi.fn(async () => {
-      const body = pages[i++]!;
-      return new Response(JSON.stringify(body), { status: 200 });
-    });
+    globalThis.fetch = vi.fn(async () => Response.json(pages[i++]!));
 
     const client = createDockerHubClient();
     const tags = await client.listTags('node');
@@ -26,10 +23,7 @@ describe('createDockerHubClient', () => {
   });
 
   it('prefixes single-segment images with library/', async () => {
-    const fetchMock = vi.fn(
-      async (_url: string) =>
-        new Response(JSON.stringify({ results: [], next: null }), { status: 200 }),
-    );
+    const fetchMock = vi.fn(async (_url: string) => Response.json({ results: [], next: null }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     const client = createDockerHubClient();
     await client.listTags('alpine');

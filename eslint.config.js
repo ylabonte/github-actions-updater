@@ -19,7 +19,7 @@ export default defineConfig(
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
-  unicorn.configs['flat/recommended'],
+  unicorn.configs.recommended,
   {
     languageOptions: {
       parserOptions: {

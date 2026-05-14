@@ -41,7 +41,7 @@ describe('runCheck', () => {
     await rm(cwd, { recursive: true, force: true });
   });
 
-  it('returns exit 1 when outdated entries exist', async () => {
+  it('returns exit 0 by default when outdated entries exist (no errors)', async () => {
     await writeFile(join(cwd, '.github', 'workflows', 'ci.yml'), WORKFLOW_OUTDATED);
     const github = fakeGitHubClient({ 'actions/checkout': [{ name: 'v4.0.0', sha: 'a' }] });
     const r = await runCheck(
@@ -53,8 +53,24 @@ describe('runCheck', () => {
         json: false,
       },
     );
-    expect(r.exitCode).toBe(1);
+    expect(r.exitCode).toBe(0);
     expect(r.text).toContain('actions/checkout');
+  });
+
+  it('returns exit 1 for outdated entries when failOnOutdated is set', async () => {
+    await writeFile(join(cwd, '.github', 'workflows', 'ci.yml'), WORKFLOW_OUTDATED);
+    const github = fakeGitHubClient({ 'actions/checkout': [{ name: 'v4.0.0', sha: 'a' }] });
+    const r = await runCheck(
+      { github, docker: noopDocker },
+      {
+        target: 'latest',
+        cwd,
+        color: false,
+        json: false,
+        failOnOutdated: true,
+      },
+    );
+    expect(r.exitCode).toBe(1);
   });
 
   it('returns exit 0 when all current', async () => {
@@ -85,6 +101,43 @@ describe('runCheck', () => {
       },
     );
     expect(() => JSON.parse(r.text)).not.toThrow();
+  });
+
+  it('returns exit 1 when some (but not all) resolutions errored', async () => {
+    // One action resolves cleanly, one throws → not "allError" but `hasError` is true.
+    await writeFile(
+      join(cwd, '.github', 'workflows', 'ci.yml'),
+      [
+        'jobs:',
+        '  x:',
+        '    steps:',
+        '      - uses: actions/checkout@v3',
+        '      - uses: actions/setup-node@v3',
+        '',
+      ].join('\n'),
+    );
+    const github = {
+      async listTags(owner: string, repo: string) {
+        if (repo === 'setup-node') throw new Error('boom');
+        return [{ name: 'v4.0.0', sha: 'a' }];
+      },
+      async getBranchHead() {
+        return null;
+      },
+      async resolveTagSha() {
+        return null;
+      },
+    };
+    const r = await runCheck(
+      { github, docker: noopDocker },
+      {
+        target: 'latest',
+        cwd,
+        color: false,
+        json: false,
+      },
+    );
+    expect(r.exitCode).toBe(1);
   });
 
   it('returns exit 2 when every resolution errored', async () => {

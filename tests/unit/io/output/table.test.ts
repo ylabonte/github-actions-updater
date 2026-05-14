@@ -4,6 +4,11 @@ import { renderTable } from '../../../../src/io/output/table.js';
 import type { Resolution } from '../../../../src/core/types.js';
 import { makeReference } from '../../../helpers/fixtures.js';
 
+// Use a fixed cwd so the rendered "Workflow" column is deterministic across runners.
+// makeReference() sets location.file to `/tmp/test.yml`; with cwd `/tmp` the relative
+// rendering is simply `test.yml` on every platform.
+const FIXED_CWD = '/tmp';
+
 const sample: Resolution[] = [
   {
     reference: makeReference('actions/checkout@v4'),
@@ -31,18 +36,18 @@ const sample: Resolution[] = [
 
 describe('renderTable', () => {
   it('renders without color (snapshot)', () => {
-    expect(renderTable(sample, { color: false })).toMatchSnapshot();
+    expect(renderTable(sample, { color: false, cwd: FIXED_CWD })).toMatchSnapshot();
   });
 
   it('renders with color and contains expected fragments', () => {
-    const out = renderTable(sample, { color: true });
+    const out = renderTable(sample, { color: true, cwd: FIXED_CWD });
     expect(out).toContain('actions/checkout');
     expect(out).toContain('Workflow');
     expect(out).toContain('outdated');
   });
 
   it('renders empty input', () => {
-    const out = renderTable([], { color: false });
+    const out = renderTable([], { color: false, cwd: FIXED_CWD });
     expect(out).toContain('0 up to date');
   });
 
@@ -54,7 +59,7 @@ describe('renderTable', () => {
       level: 'none',
       outdated: false,
     };
-    const out = renderTable([r], { color: false });
+    const out = renderTable([r], { color: false, cwd: FIXED_CWD });
     expect(out).toContain('./.github/actions/build');
   });
 });

@@ -1,6 +1,8 @@
 # CI integration
 
-`gau` exits non-zero when outdated references are found, which makes it easy to gate CI on staying up to date — or just to surface drift without blocking.
+By default `gau` exits 0 even when there are outdated references — a scan that finished
+successfully isn't an error, just an information signal. Pass `--fail-on-outdated` to flip
+that behavior when you want CI to block on drift.
 
 ## Drift-only reporting (recommended)
 
@@ -35,12 +37,16 @@ jobs:
 To fail CI when drift is detected (e.g. on PRs):
 
 ```yaml
-- run: npx github-actions-updater
+- run: npx github-actions-updater --fail-on-outdated
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-The default exit is `1` when outdated references exist, `2` on fatal errors, `0` otherwise.
+Exit codes:
+
+- `0` — scan ran; outdated entries (if any) do not fail unless `--fail-on-outdated` is set.
+- `1` — partial failure (one or more resolutions errored), or `--fail-on-outdated` set and entries were outdated.
+- `2` — every resolution errored (usually rate limiting / auth / network).
 
 ## JSON output
 

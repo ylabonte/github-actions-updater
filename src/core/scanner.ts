@@ -1,6 +1,8 @@
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
+import { toPosixPath } from '../utils/paths.js';
+
 export interface WorkflowFile {
   readonly path: string; // absolute
   readonly relativePath: string; // relative to cwd
@@ -40,11 +42,10 @@ export async function scanWorkflows(options: ScanOptions = {}): Promise<Workflow
     const content = await readFile(abs, 'utf8');
     files.push({
       path: abs,
-      relativePath: path.relative(cwd, abs),
+      relativePath: toPosixPath(path.relative(cwd, abs)),
       content,
     });
   }
 
-  files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-  return files;
+  return files.toSorted((a, b) => a.relativePath.localeCompare(b.relativePath));
 }

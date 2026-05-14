@@ -1,5 +1,5 @@
 import { classifyDiff, pickLatest, type Candidate } from '../comparator.js';
-import { parseTag } from '../../utils/semver-tag.js';
+import { parseTag, trackLevel, type TrackLevel } from '../../utils/semver-tag.js';
 import type { Reference, Resolution, RemoteRef, Target } from '../types.js';
 import type { GitHubClient } from './github-client.js';
 
@@ -25,30 +25,37 @@ export async function resolveTag(
   const current = parseTag(ref.ref);
   const latest = pickLatest(current, candidates, target);
   const level = classifyDiff(current, latest);
+  const currentTrack: TrackLevel = current ? trackLevel(current) : 'exact';
 
   return {
     reference,
     current: ref.ref,
-    latest: latest ? renderTag(latest.raw, ref.ref) : null,
+    latest: latest ? renderTag(latest.raw, ref.ref, currentTrack) : null,
     level,
     outdated: latest !== null && level !== 'none',
   };
 }
 
 /**
- * When the user uses `v4` (no minor/patch), prefer to mirror that style even if the newer
- * tag we picked has a more specific form. Conversely, if the user has `v4.1.1`, keep the
- * fully qualified form.
+ * Render the new ref string, preserving the user's pinning style:
  *
- * This is a display/write helper — the canonical version comparison happens in `pickLatest`.
+ *   user has `v4`     (major partial) → keep major form on bumps: `v5`
+ *   user has `v4.1`   (minor partial) → keep major.minor form: `v4.2` or `v5.0`
+ *   user has `v4.1.0` (exact)         → return the full latest tag verbatim
+ *
+ * Also preserves the user's `v`-prefix convention either way.
+ *
+ * This is a display/write helper — the canonical version comparison happens in `classifyDiff`.
  */
-function renderTag(latestRaw: string, currentRaw: string): string {
-  // Preserve `v` vs no-`v` style of the user's current ref.
-  if (!currentRaw.startsWith('v') && latestRaw.startsWith('v')) {
-    return latestRaw.slice(1);
+function renderTag(latestRaw: string, currentRaw: string, currentTrack: TrackLevel): string {
+  const wantsV = currentRaw.startsWith('v') || currentRaw.startsWith('V');
+  const cleaned = latestRaw.replace(/^v/i, '');
+
+  let body = cleaned;
+  if (currentTrack !== 'exact') {
+    const parts = cleaned.split('.');
+    /* c8 ignore next — parts[0] is always defined since split always yields a non-empty array. */
+    body = currentTrack === 'major' ? (parts[0] ?? cleaned) : parts.slice(0, 2).join('.');
   }
-  if (currentRaw.startsWith('v') && !latestRaw.startsWith('v')) {
-    return `v${latestRaw}`;
-  }
-  return latestRaw;
+  return wantsV ? `v${body}` : body;
 }

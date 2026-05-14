@@ -37,11 +37,11 @@ You'll get a colored table:
 
 Exit codes:
 
-| Code | Meaning                  |
-| ---- | ------------------------ |
-| `0`  | All references current   |
-| `1`  | At least one is outdated |
-| `2`  | A fatal error occurred   |
+| Code | When                                                                                                           |
+| ---- | -------------------------------------------------------------------------------------------------------------- |
+| `0`  | The scan ran. Outdated entries do **not** fail by default — opt in with `--fail-on-outdated` for CI gating.    |
+| `1`  | At least one resolution errored (partial failure), or `--fail-on-outdated` was set and outdated entries exist. |
+| `2`  | Every resolution errored — usually rate limiting, auth, or network.                                            |
 
 ## Apply updates
 
@@ -52,6 +52,13 @@ gau --write
 ```
 
 `gau` rewrites the workflow files in place. SHA-pinned refs (`@<sha> # vX.Y.Z`) have both their SHA and trailing comment updated together. Formatting and comments are preserved exactly as they were.
+
+Add `--commit` to also stage the changes and open `git commit -v` with a pre-filled message:
+
+```bash
+gau -u --commit       # apply + open editor
+gau -i --commit       # pick + apply + open editor
+```
 
 ## Pick interactively
 

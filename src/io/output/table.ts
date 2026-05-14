@@ -3,6 +3,7 @@ import pc from 'picocolors';
 import path from 'node:path';
 
 import type { Resolution } from '../../core/types.js';
+import { toPosixPath } from '../../utils/paths.js';
 import { formatLevel, formatSummary, formatVersion, type FormatterOptions } from './formatter.js';
 
 export interface RenderTableOptions extends FormatterOptions {
@@ -29,7 +30,10 @@ export function renderTable(resolutions: readonly Resolution[], opts: RenderTabl
   for (const r of resolutions) {
     const ref = r.reference.parsed;
     const action = displayAction(ref);
-    const workflow = path.relative(cwd, r.reference.location.file);
+    const workflow = toPosixPath(path.relative(cwd, r.reference.location.file));
+    // For error rows, the Latest column carries the error text — a green ✓ in Δ would be
+    // misleading, so we surface a yellow ⚠ instead.
+    const delta = r.error ? (opts.color ? pc.yellow('⚠') : '⚠') : formatLevel(r.level, opts);
     table.push([
       opts.color ? pc.dim(workflow) : workflow,
       action,
@@ -39,7 +43,7 @@ export function renderTable(resolutions: readonly Resolution[], opts: RenderTabl
           ? pc.yellow(r.error)
           : r.error
         : formatVersion(r.latest, r.level, opts),
-      formatLevel(r.level, opts),
+      delta,
     ]);
   }
 

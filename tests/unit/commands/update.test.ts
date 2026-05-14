@@ -32,8 +32,10 @@ describe('applyUpdates', () => {
       level: 'major',
       outdated: true,
     };
-    const results = await applyUpdates([resolution]);
-    expect(results).toEqual([{ file, changes: 1 }]);
+    const outcome = await applyUpdates([resolution]);
+    expect(outcome.files).toEqual([{ file, changes: 1 }]);
+    expect(outcome.applied).toHaveLength(1);
+    expect(outcome.applied[0]?.reference).toBe(refs[0]);
     expect(await readFile(file, 'utf8')).toContain('actions/checkout@v4');
   });
 
@@ -70,8 +72,9 @@ describe('applyUpdates', () => {
       level: 'none',
       outdated: false,
     };
-    const results = await applyUpdates([r]);
-    expect(results).toEqual([]);
+    const outcome = await applyUpdates([r]);
+    expect(outcome.files).toEqual([]);
+    expect(outcome.applied).toEqual([]);
   });
 
   it('skips branch refs by default', async () => {
@@ -86,8 +89,8 @@ describe('applyUpdates', () => {
       level: 'mutable',
       outdated: true,
     };
-    const results = await applyUpdates([r]);
-    expect(results).toEqual([]);
+    const outcome = await applyUpdates([r]);
+    expect(outcome.files).toEqual([]);
   });
 
   it('returns no replacement when latest is null', async () => {
@@ -102,8 +105,8 @@ describe('applyUpdates', () => {
       level: 'none',
       outdated: true, // intentionally inconsistent — buildReplacement should still bail on null latest
     };
-    const results = await applyUpdates([r]);
-    expect(results).toEqual([]);
+    const outcome = await applyUpdates([r]);
+    expect(outcome.files).toEqual([]);
   });
 
   it('returns no replacement for SHA when latestSha is null', async () => {
@@ -121,8 +124,8 @@ describe('applyUpdates', () => {
       latestSha: null,
       latestComment: 'v4.0.0',
     };
-    const results = await applyUpdates([r]);
-    expect(results).toEqual([]);
+    const outcome = await applyUpdates([r]);
+    expect(outcome.files).toEqual([]);
   });
 
   it('skips branch refs when allowBranchPin is false (explicit option)', async () => {
@@ -137,7 +140,9 @@ describe('applyUpdates', () => {
       level: 'mutable',
       outdated: true,
     };
-    expect(await applyUpdates([r], { allowBranchPin: false })).toEqual([]);
+    const outcome = await applyUpdates([r], { allowBranchPin: false });
+    expect(outcome.files).toEqual([]);
+    expect(outcome.applied).toEqual([]);
   });
 
   it('rewrites docker image tag', async () => {

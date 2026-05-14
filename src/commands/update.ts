@@ -9,20 +9,29 @@ export interface ApplyResult {
   readonly changes: number;
 }
 
+export interface ApplyOutcome {
+  /** Per-file summary of writes (zero-change entries possible if rewrite was a no-op). */
+  readonly files: ApplyResult[];
+  /** Resolutions whose replacement actually contributed to a write. Drives commit message. */
+  readonly applied: Resolution[];
+}
+
 export interface ApplyOptions {
   /** When true, branch refs are rewritten to SHA pins. Default false (safer). */
   readonly allowBranchPin?: boolean;
 }
 
 /**
- * Apply selected outdated resolutions to disk. Resolutions whose ref is a branch are skipped
- * unless `allowBranchPin` is true. Returns a per-file summary of changes written.
+ * Apply selected outdated resolutions to disk. Branch refs are skipped unless
+ * `allowBranchPin` is true. Returns a per-file summary plus the list of resolutions whose
+ * rewrites were actually persisted — callers use that list to drive commit-message
+ * generation.
  */
 export async function applyUpdates(
   resolutions: readonly Resolution[],
   options: ApplyOptions = {},
-): Promise<ApplyResult[]> {
-  const byFile = new Map<string, Replacement[]>();
+): Promise<ApplyOutcome> {
+  const byFile = new Map<string, { replacements: Replacement[]; resolutions: Resolution[] }>();
 
   for (const r of resolutions) {
     if (!r.outdated || !r.latest) continue;
@@ -32,21 +41,24 @@ export async function applyUpdates(
     const replacement = buildReplacement(r);
     if (!replacement) continue;
 
-    const list = byFile.get(r.reference.location.file) ?? [];
-    list.push(replacement);
-    byFile.set(r.reference.location.file, list);
+    const bucket = byFile.get(r.reference.location.file) ?? { replacements: [], resolutions: [] };
+    bucket.replacements.push(replacement);
+    bucket.resolutions.push(r);
+    byFile.set(r.reference.location.file, bucket);
   }
 
-  const results: ApplyResult[] = [];
-  for (const [file, replacements] of byFile) {
+  const files: ApplyResult[] = [];
+  const applied: Resolution[] = [];
+  for (const [file, bucket] of byFile) {
     const original = await readFile(file, 'utf8');
-    const { content, changes } = rewriteContent(original, replacements);
+    const { content, changes } = rewriteContent(original, bucket.replacements);
     if (changes > 0 && content !== original) {
       await writeWorkflow(file, content);
+      applied.push(...bucket.resolutions);
     }
-    results.push({ file, changes });
+    files.push({ file, changes });
   }
-  return results;
+  return { files, applied };
 }
 
 function buildReplacement(r: Resolution): Replacement | null {
