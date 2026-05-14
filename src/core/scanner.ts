@@ -47,6 +47,5 @@ export async function scanWorkflows(options: ScanOptions = {}): Promise<Workflow
     });
   }
 
-  files.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-  return files;
+  return files.toSorted((a, b) => a.relativePath.localeCompare(b.relativePath));
 }

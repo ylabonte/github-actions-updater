@@ -48,6 +48,7 @@ export async function resolveAuth(options: ResolveAuthOptions = {}): Promise<Aut
 }
 
 // Inputs are hardcoded constants — no injection surface. Uses execFile (not shell exec).
+/* c8 ignore start — system-boundary: would need a real `gh` binary to exercise. */
 async function defaultGhAuthToken(): Promise<string | null> {
   try {
     const { stdout } = await execFileAsync('gh', ['auth', 'token'], { timeout: 5000 });
@@ -56,3 +57,4 @@ async function defaultGhAuthToken(): Promise<string | null> {
     return null;
   }
 }
+/* c8 ignore stop */

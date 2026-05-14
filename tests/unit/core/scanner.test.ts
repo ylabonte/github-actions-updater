@@ -29,7 +29,7 @@ describe('scanWorkflows', () => {
     await writeFile(join(wf, 'README.md'), '# not a workflow\n');
 
     const files = await scanWorkflows({ cwd });
-    expect(files.map((f) => f.relativePath).sort()).toEqual([
+    expect(files.map((f) => f.relativePath).toSorted()).toEqual([
       '.github/workflows/ci.yml',
       '.github/workflows/release.yaml',
     ]);

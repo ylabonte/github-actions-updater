@@ -31,7 +31,7 @@ export function rewriteContent(
   if (replacements.length === 0) {
     return { file: '', content: originalContent, changes: 0 };
   }
-  const sorted = [...replacements].sort(
+  const sorted = replacements.toSorted(
     (a, b) => b.reference.location.offset - a.reference.location.offset,
   );
 
