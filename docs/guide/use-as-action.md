@@ -16,6 +16,7 @@ The complete tables live in the [README](https://github.com/ylabonte/github-acti
 - **`commit: true`** implies `--no-edit` — no editor is invoked, the action commits the prefilled message verbatim. Without `commit`, the workflow files are left modified for the next step to handle.
 - **`fail-on-outdated: true`** turns the action into a CI gate. Without it the action always exits 0 on a successful scan, even if there's drift.
 - **`github-token`** defaults to the workflow's auto-provided `github.token`. That's enough for public-repo scans; private repos may need a PAT with `repo:read`.
+- **`changes` output** is the number of workflow files actually rewritten on disk (derived from `git diff` after the action runs), not the scan-time outdated count. Always `0` when `write: false`. Safe to gate downstream steps on (`if: steps.ghau.outputs.changes > 0`).
 
 ## Recipes
 

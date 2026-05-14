@@ -2,7 +2,7 @@
 
 > `ncu` for GitHub Actions — scan `.github/workflows/` for outdated `uses:` references and (optionally) apply the updates.
 
-[![CI](https://github.com/yannic/github-actions-updater/actions/workflows/ci.yml/badge.svg)](https://github.com/yannic/github-actions-updater/actions/workflows/ci.yml)
+[![CI](https://github.com/ylabonte/github-actions-updater/actions/workflows/ci.yml/badge.svg)](https://github.com/ylabonte/github-actions-updater/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/github-actions-updater.svg)](https://www.npmjs.com/package/github-actions-updater)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
@@ -63,26 +63,26 @@ Pair it with [`peter-evans/create-pull-request`](https://github.com/peter-evans/
 
 ### Inputs
 
-| Name               | Default             | Description                                                                                   |
-| ------------------ | ------------------- | --------------------------------------------------------------------------------------------- |
-| `version`          | `latest`            | npm tag or version of `github-actions-updater` to run via `npx`.                              |
-| `target`           | `latest`            | Update target policy: `latest`, `major`, `minor`, `patch`, `greatest`.                        |
-| `filter`           | _(none)_            | Space-separated globs of action names to include (e.g. `actions/*`).                          |
-| `reject`           | _(none)_            | Space-separated globs of action names to exclude (e.g. `docker://**`).                        |
-| `workflows`        | `.github/workflows` | Override the workflows directory.                                                             |
-| `write`            | `false`             | Apply updates to workflow files (`--write`).                                                  |
-| `commit`           | `false`             | After `--write`, stage the changes and produce a non-interactive commit. Implies `--no-edit`. |
-| `allow-branch-pin` | `false`             | On `--write`, convert branch refs to pinned SHAs.                                             |
-| `fail-on-outdated` | `false`             | Exit non-zero when outdated entries are found.                                                |
-| `github-token`     | `github.token`      | Token for GitHub API auth. Defaults to the workflow's auto-provided `github.token`.           |
+| Name               | Default             | Description                                                                                                                                                                              |
+| ------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`          | `latest`            | npm tag or version of `github-actions-updater` to run via `npx`.                                                                                                                         |
+| `target`           | `latest`            | Update target policy: `latest`, `major`, `minor`, `patch`, `greatest`.                                                                                                                   |
+| `filter`           | _(none)_            | Space-separated globs of action names to include (e.g. `actions/*`).                                                                                                                     |
+| `reject`           | _(none)_            | Space-separated globs of action names to exclude (e.g. `docker://**`).                                                                                                                   |
+| `workflows`        | `.github/workflows` | Override the workflows directory.                                                                                                                                                        |
+| `write`            | `false`             | Apply updates to workflow files (`--write`).                                                                                                                                             |
+| `commit`           | `false`             | After `--write`, stage the changes and produce a non-interactive commit. Implies `--no-edit`.                                                                                            |
+| `allow-branch-pin` | `false`             | On `--write`, convert branch refs to pinned SHAs.                                                                                                                                        |
+| `fail-on-outdated` | `false`             | Exit non-zero when outdated entries are found.                                                                                                                                           |
+| `github-token`     | _(empty)_           | Token for GitHub API auth. When empty, falls back to the workflow's auto-provided `github.token` inside the action. Override with a PAT for private-repo or higher-rate-limit scenarios. |
 
 ### Outputs
 
-| Name       | Description                                                                                                       |
-| ---------- | ----------------------------------------------------------------------------------------------------------------- |
-| `outdated` | Number of outdated references found in the scan.                                                                  |
-| `changes`  | Number of entries that were rewritten (only meaningful when `write: true`).                                       |
-| `json`     | Path to the JSON report file the action produced. Suitable for `jq` post-processing or `actions/upload-artifact`. |
+| Name       | Description                                                                                                                                                                                                                                               |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `outdated` | Number of outdated references found in the scan.                                                                                                                                                                                                          |
+| `changes`  | Number of workflow files actually rewritten on disk. Always `0` when `write: false`; derived from `git diff` after the action runs, so it reflects the truth-on-disk and is safe to gate downstream steps on (e.g. `if: steps.ghau.outputs.changes > 0`). |
+| `json`     | Path to the JSON report file the action produced. Suitable for `jq` post-processing or `actions/upload-artifact`.                                                                                                                                         |
 
 See [Use as a GitHub Action](https://ylabonte.github.io/github-actions-updater/guide/use-as-action) for more recipes: drift-only PR comments, hard CI gates, monorepo splits, pinning strategies.
 
@@ -114,7 +114,7 @@ There's no real shortage of update tooling for Node.js dependencies, but action 
 
 ## Documentation
 
-Full docs: <https://yannic.github.io/github-actions-updater/>
+Full docs: <https://ylabonte.github.io/github-actions-updater/>
 
 ## Development
 

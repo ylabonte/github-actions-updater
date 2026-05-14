@@ -44,16 +44,16 @@ inputs:
     required: false
     default: 'false'
   github-token:
-    description: 'Token used for GitHub API auth.'
+    description: 'Token used for GitHub API auth. Defaults to the workflow-provided `github.token` when left empty.'
     required: false
-    default: ${{ github.token }}
+    default: ''
 
 outputs:
   outdated:
     description: 'Number of outdated references found.'
     value: ${{ steps.run.outputs.outdated }}
   changes:
-    description: 'Number of files modified (only when write=true).'
+    description: 'Number of workflow files actually rewritten on disk (always 0 unless `write: true`).'
     value: ${{ steps.run.outputs.changes }}
   json:
     description: 'Path to the JSON report file the action produced.'
@@ -65,7 +65,10 @@ runs:
     - id: run
       shell: bash
       env:
-        GITHUB_TOKEN: ${{ inputs.github-token }}
+        # Empty input falls back to the workflow's auto-provided token. Defaults to
+        # `github.token` (never to `secrets.GITHUB_TOKEN` directly — that's not
+        # available in composite-action expressions). Caller can still supply a PAT.
+        GITHUB_TOKEN: ${{ inputs.github-token != '' && inputs.github-token || github.token }}
         GHAU_VERSION: ${{ inputs.version }}
         GHAU_TARGET: ${{ inputs.target }}
         GHAU_FILTER: ${{ inputs.filter }}
@@ -101,6 +104,17 @@ runs:
         report="$RUNNER_TEMP/ghau.json"
         npx -y "github-actions-updater@$GHAU_VERSION" "${args[@]}" | tee "$report"
 
-        echo "json=$report"                                                          >> "$GITHUB_OUTPUT"
-        echo "outdated=$(jq '.summary.outdated' "$report")"                          >> "$GITHUB_OUTPUT"
-        echo "changes=$(jq '[.entries[] | select(.outdated)] | length' "$report")"   >> "$GITHUB_OUTPUT"
+        # `changes` reflects what was actually rewritten on disk, not the scan-time
+        # outdated count. They diverge when (a) write is false, (b) branch refs are
+        # outdated but allow-branch-pin is false, or (c) the user opts out via filter/
+        # reject after the scan. We derive it from `git diff --name-only` so it's
+        # always the truth-on-disk number. Outside a git repo there are no rewrites
+        # to detect → reported as 0; callers gating on it should also gate on `outdated`.
+        changes=0
+        if [[ "$GHAU_WRITE" == "true" ]] && git rev-parse --git-dir >/dev/null 2>&1; then
+          changes=$(git diff --name-only -- '*.yml' '*.yaml' | wc -l | tr -d ' ')
+        fi
+
+        echo "json=$report"                                  >> "$GITHUB_OUTPUT"
+        echo "outdated=$(jq '.summary.outdated' "$report")"  >> "$GITHUB_OUTPUT"
+        echo "changes=$changes"                              >> "$GITHUB_OUTPUT"

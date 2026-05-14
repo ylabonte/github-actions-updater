@@ -21,7 +21,7 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/quickstart' },
       { text: 'CLI reference', link: '/reference/cli' },
       { text: 'Recipes', link: '/recipes/' },
-      { text: 'GitHub', link: `https://github.com/yannic/${REPO}` },
+      { text: 'GitHub', link: `https://github.com/ylabonte/${REPO}` },
     ],
     sidebar: {
       '/guide/': [
@@ -69,7 +69,7 @@ export default defineConfig({
       copyright: 'Copyright © Yannic Labonte',
     },
     editLink: {
-      pattern: `https://github.com/yannic/${REPO}/edit/main/docs/:path`,
+      pattern: `https://github.com/ylabonte/${REPO}/edit/main/docs/:path`,
     },
   },
 });
