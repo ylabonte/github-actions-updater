@@ -10,16 +10,16 @@ The conventional form is:
 
 The trailing comment is what makes the pin maintainable — it tells humans and tools what version the SHA actually represents.
 
-## How `gau` handles SHA-pinned refs
+## How `ghau` handles SHA-pinned refs
 
-When `gau` encounters a SHA-pinned reference:
+When `ghau` encounters a SHA-pinned reference:
 
 1. It reads the trailing `# vX.Y.Z` comment as the canonical "current" version.
 2. It queries the action's tags to find a newer version per `--target`.
 3. If found, it resolves the new version's commit SHA.
 4. On `--write`, both the SHA and the version comment are rewritten together.
 
-A diff after `gau -u` looks like this:
+A diff after `ghau -u` looks like this:
 
 ```diff
 -      - uses: actions/checkout@a1b2c3d4... # v4.1.1
@@ -28,4 +28,4 @@ A diff after `gau -u` looks like this:
 
 ## What if the comment is missing?
 
-If a SHA-pinned ref has no `# vX.Y.Z` comment, `gau` cannot tell what version it represents, so it surfaces a row-level error rather than guessing. To bring such refs back under the tool's coverage, add the version comment manually once — `gau` will keep it in sync after that.
+If a SHA-pinned ref has no `# vX.Y.Z` comment, `ghau` cannot tell what version it represents, so it surfaces a row-level error rather than guessing. To bring such refs back under the tool's coverage, add the version comment manually once — `ghau` will keep it in sync after that.

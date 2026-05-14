@@ -2,14 +2,14 @@
 
 Config files are loaded via [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig), so any of the following are recognized:
 
-- `gau.config.ts`
-- `gau.config.js`
-- `gau.config.cjs`
-- `gau.config.mjs`
-- `gau.config.json`
+- `ghau.config.ts`
+- `ghau.config.js`
+- `ghau.config.cjs`
+- `ghau.config.mjs`
+- `ghau.config.json`
 - `.gaurc`
 - `.gaurc.json`
-- A `gau` key in `package.json`
+- A `ghau` key in `package.json`
 
 ::: info Status
 Config file loading is wired through `cosmiconfig`. The schema is intentionally minimal at v0.x; expect new fields to land as use cases emerge.
@@ -30,7 +30,7 @@ interface GauConfig {
 ## Example
 
 ```ts
-// gau.config.ts
+// ghau.config.ts
 import { defineConfig } from 'github-actions-updater';
 
 export default defineConfig({

@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 jobs:
-  gau:
-    name: Run gau against this repo
+  ghau:
+    name: Run ghau against this repo
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -24,12 +24,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - name: gau --json
+      - name: ghau --json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +e
-          node dist/cli.js --json > gau.json
+          node dist/cli.js --json > ghau.json
           code=$?
-          cat gau.json
+          cat ghau.json
           if [ "$code" -eq 2 ]; then exit 1; fi

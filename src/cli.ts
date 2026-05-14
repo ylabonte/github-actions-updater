@@ -23,7 +23,7 @@ const TARGETS = ['latest', 'major', 'minor', 'patch', 'greatest'] as const;
 
 export function buildProgram() {
   return new Command()
-    .name('gau')
+    .name('ghau')
     .description('ncu for GitHub Actions — scan .github/workflows for outdated references.')
     .version(VERSION)
     .option('-u, --write', 'apply updates in place', false)

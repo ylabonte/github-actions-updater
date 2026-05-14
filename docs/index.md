@@ -25,7 +25,7 @@ features:
   - title: Tested above 90%
     details: 142+ unit and integration tests. Strict TypeScript. Zero shell-injection surface.
   - title: Self-checking
-    details: This repo runs `gau` against its own workflows every Monday. The tool maintains itself.
+    details: This repo runs `ghau` against its own workflows every Monday. The tool maintains itself.
 ---
 
 ## Install
@@ -45,14 +45,14 @@ npx github-actions-updater
 
 ```bash
 # Scan and report
-gau
+ghau
 
 # Apply every available update
-gau -u
+ghau -u
 
 # Pick what to apply
-gau -i
+ghau -i
 
 # CI-friendly machine output
-gau --json
+ghau --json
 ```

@@ -1,6 +1,6 @@
 # CI integration
 
-By default `gau` exits 0 even when there are outdated references — a scan that finished
+By default `ghau` exits 0 even when there are outdated references — a scan that finished
 successfully isn't an error, just an information signal. Pass `--fail-on-outdated` to flip
 that behavior when you want CI to block on drift.
 

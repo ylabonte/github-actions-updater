@@ -33,7 +33,7 @@ describe('runCheck', () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'gau-check-'));
+    cwd = await mkdtemp(join(tmpdir(), 'ghau-check-'));
     await mkdir(join(cwd, '.github', 'workflows'), { recursive: true });
   });
 

@@ -1,6 +1,6 @@
 # Quickstart
 
-`github-actions-updater` (`gau`) scans the `.github/workflows/` directory of the current repo for remote `uses:` references and tells you which are outdated. It works on any repo, not just Node.js ones.
+`github-actions-updater` (`ghau`) scans the `.github/workflows/` directory of the current repo for remote `uses:` references and tells you which are outdated. It works on any repo, not just Node.js ones.
 
 ## Install
 
@@ -19,7 +19,7 @@ npx github-actions-updater
 From the root of a repo with a `.github/workflows/` directory:
 
 ```bash
-gau
+ghau
 ```
 
 You'll get a colored table:
@@ -46,31 +46,31 @@ Exit codes:
 ## Apply updates
 
 ```bash
-gau -u
+ghau -u
 # or
-gau --write
+ghau --write
 ```
 
-`gau` rewrites the workflow files in place. SHA-pinned refs (`@<sha> # vX.Y.Z`) have both their SHA and trailing comment updated together. Formatting and comments are preserved exactly as they were.
+`ghau` rewrites the workflow files in place. SHA-pinned refs (`@<sha> # vX.Y.Z`) have both their SHA and trailing comment updated together. Formatting and comments are preserved exactly as they were.
 
 Add `--commit` to also stage the changes and open `git commit -v` with a pre-filled message:
 
 ```bash
-gau -u --commit       # apply + open editor
-gau -i --commit       # pick + apply + open editor
+ghau -u --commit       # apply + open editor
+ghau -i --commit       # pick + apply + open editor
 ```
 
 ## Pick interactively
 
 ```bash
-gau -i
+ghau -i
 ```
 
 A checkbox UI lets you pick which updates to apply. Deselected entries are left untouched.
 
 ## Authentication
 
-By default `gau` tries, in order:
+By default `ghau` tries, in order:
 
 1. `GITHUB_TOKEN` environment variable
 2. `GH_TOKEN` environment variable

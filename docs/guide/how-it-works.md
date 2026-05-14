@@ -1,6 +1,6 @@
 # How it works
 
-`gau` runs a simple pipeline:
+`ghau` runs a simple pipeline:
 
 1. **Scan** — find every `*.yml` and `*.yaml` file in `.github/workflows/` (skipping subdirectories and `.github/actions/`).
 2. **Parse** — for each file, extract every `uses:` value with its source position.
@@ -25,7 +25,7 @@
 
 Most action authors maintain `@v4` as a _floating_ major tag — they force-push it to the
 latest within-major release whenever they cut a new minor or patch. That means `@v4` is
-already functionally equivalent to "latest v4.x.y". `gau` treats it that way: it doesn't
+already functionally equivalent to "latest v4.x.y". `ghau` treats it that way: it doesn't
 report `@v4` as outdated against `v4.7.0`, because the ref already resolves there.
 A cross-major release (`v5.0.0`) is the first thing that bumps the row to "major".
 
@@ -45,13 +45,13 @@ The same applies to `@v4.1`: it floats within `v4.1.x`, so a new patch isn't a b
 
 ## Surgical writes
 
-When you run `gau --write`, the tool does **not** reserialize the YAML through an AST. It splices replacements directly into the original text using the byte offsets captured at parse time. The result: comments, blank lines, indentation, and quoting style all stay exactly as you wrote them.
+When you run `ghau --write`, the tool does **not** reserialize the YAML through an AST. It splices replacements directly into the original text using the byte offsets captured at parse time. The result: comments, blank lines, indentation, and quoting style all stay exactly as you wrote them.
 
 For SHA-pinned references, both the SHA and the trailing `# vX.Y.Z` comment are updated together — that comment is treated as part of the reference, not as decoration.
 
 ## Committing the updates
 
-Add `--commit` to `--write` or `--interactive` and `gau` will, after the workflow files are rewritten:
+Add `--commit` to `--write` or `--interactive` and `ghau` will, after the workflow files are rewritten:
 
 1. Stage the changed files with `git add`.
 2. Open `git commit -v` with a pre-filled message: a one-line summary plus a bullet per updated action.

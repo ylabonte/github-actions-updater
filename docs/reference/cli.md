@@ -7,7 +7,7 @@ This page is auto-generated from the `commander` definition by `pnpm docs:gen-cl
 <!-- AUTOGEN:BEGIN -->
 
 ```
-Usage: gau [options]
+Usage: ghau [options]
 
 ncu for GitHub Actions — scan .github/workflows for outdated references.
 

@@ -50,7 +50,7 @@ describe('cli end-to-end', () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'gau-cli-'));
+    cwd = await mkdtemp(join(tmpdir(), 'ghau-cli-'));
     await mkdir(join(cwd, '.github', 'workflows'), { recursive: true });
   });
 
@@ -67,7 +67,7 @@ describe('cli end-to-end', () => {
 
   it('prints --help and exits 0', async () => {
     const r = await runCli(['--help'], cwd);
-    expect(r.stdout).toContain('Usage: gau');
+    expect(r.stdout).toContain('Usage: ghau');
     expect(r.exitCode).toBe(0);
   }, 30_000);
 
