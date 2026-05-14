@@ -52,8 +52,11 @@ outputs:
   outdated:
     description: 'Number of outdated references found.'
     value: ${{ steps.run.outputs.outdated }}
+    # See the script below for the two-path derivation:
+    #   commit: true  → diff HEAD_BEFORE..HEAD_AFTER (the commit just landed)
+    #   write only    → diff against the index (rewrites still in the working tree)
   changes:
-    description: 'Number of workflow files actually rewritten on disk (always 0 unless `write: true`).'
+    description: 'Number of workflow files actually rewritten by this run (counted from the just-created commit when `commit: true`, otherwise from the working tree). Always `0` when `write: false` or outside a git repository.'
     value: ${{ steps.run.outputs.changes }}
   json:
     description: 'Path to the JSON report file the action produced.'
@@ -84,35 +87,55 @@ runs:
         # Inputs reach the script through env vars set above (GHAU_*), never inline via
         # the template expression syntax, so action-name globs and similar attacker-
         # controllable values can't be shell-parsed. Each value is then pushed onto an
-        # args array, so npx receives them as separate argv entries — no shell re-parsing.
+        # args array so npx receives them as separate argv entries — no shell re-parsing.
         args=(--json --target "$GHAU_TARGET")
-        if [[ -n "$GHAU_FILTER"            ]]; then
-          # Word-split intentional: filter/reject accept multiple globs.
-          # shellcheck disable=SC2206
-          extra=($GHAU_FILTER); args+=(--filter "${extra[@]}")
+
+        # `read -r -a` word-splits on IFS without invoking pathname expansion. An
+        # earlier `extra=($GHAU_FILTER)` would have let `actions/*` glob against the
+        # workspace before reaching ghau — bad both for correctness (the runner's
+        # filesystem decides what gets filtered) and for trust (attacker-controlled
+        # input glob-expanded in a privileged context). Same for reject.
+        if [[ -n "$GHAU_FILTER" ]]; then
+          read -r -a extra <<<"$GHAU_FILTER"
+          args+=(--filter "${extra[@]}")
         fi
-        if [[ -n "$GHAU_REJECT"            ]]; then
-          # shellcheck disable=SC2206
-          extra=($GHAU_REJECT); args+=(--reject "${extra[@]}")
+        if [[ -n "$GHAU_REJECT" ]]; then
+          read -r -a extra <<<"$GHAU_REJECT"
+          args+=(--reject "${extra[@]}")
         fi
+
         [[ -n "$GHAU_WORKFLOWS"           ]] && args+=(--workflows "$GHAU_WORKFLOWS")
         [[ "$GHAU_WRITE"            == "true" ]] && args+=(--write)
         [[ "$GHAU_COMMIT"           == "true" ]] && args+=(--commit --no-edit)
         [[ "$GHAU_ALLOW_BRANCH_PIN" == "true" ]] && args+=(--allow-branch-pin)
         [[ "$GHAU_FAIL_ON_OUTDATED" == "true" ]] && args+=(--fail-on-outdated)
 
+        # Capture HEAD before running so we can tell afterward whether --commit
+        # landed a commit. Empty when not in a git repo or on an unborn branch;
+        # handled in both `changes` branches below.
+        head_before=""
+        if git rev-parse --git-dir >/dev/null 2>&1; then
+          head_before=$(git rev-parse HEAD 2>/dev/null || true)
+        fi
+
         report="$RUNNER_TEMP/ghau.json"
         npx -y "github-actions-updater@$GHAU_VERSION" "${args[@]}" | tee "$report"
 
-        # `changes` reflects what was actually rewritten on disk, not the scan-time
-        # outdated count. They diverge when (a) write is false, (b) branch refs are
-        # outdated but allow-branch-pin is false, or (c) the user opts out via filter/
-        # reject after the scan. We derive it from `git diff --name-only` so it's
-        # always the truth-on-disk number. Outside a git repo there are no rewrites
-        # to detect → reported as 0; callers gating on it should also gate on `outdated`.
+        # `changes` = number of workflow files actually rewritten by this run.
+        # Two derivation paths depending on what happened:
+        #   - `--commit` landed a commit: the working tree is clean again, but HEAD
+        #     advanced; diff HEAD_BEFORE..HEAD gives the file set in the new commit.
+        #   - `--write` without `--commit`: rewrites sit in the working tree; diff
+        #     against the index gives them.
+        # Outside a git repo (or `write=false`), nothing to count → 0.
         changes=0
         if [[ "$GHAU_WRITE" == "true" ]] && git rev-parse --git-dir >/dev/null 2>&1; then
-          changes=$(git diff --name-only -- '*.yml' '*.yaml' | wc -l | tr -d ' ')
+          head_after=$(git rev-parse HEAD 2>/dev/null || true)
+          if [[ -n "$head_before" && -n "$head_after" && "$head_before" != "$head_after" ]]; then
+            changes=$(git diff --name-only "$head_before" "$head_after" -- '*.yml' '*.yaml' | wc -l | tr -d ' ')
+          else
+            changes=$(git diff --name-only -- '*.yml' '*.yaml' | wc -l | tr -d ' ')
+          fi
         fi
 
         echo "json=$report"                                  >> "$GITHUB_OUTPUT"
