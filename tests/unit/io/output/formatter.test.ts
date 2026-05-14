@@ -19,8 +19,8 @@ const res = (overrides: Partial<Resolution> = {}): Resolution => ({
 });
 
 describe('formatLevel', () => {
-  it('returns empty for none without color', () => {
-    expect(formatLevel('none', { color: false })).toBe('');
+  it('returns ✓ for none without color', () => {
+    expect(formatLevel('none', { color: false })).toBe('✓');
   });
   it('returns label for non-none without color', () => {
     expect(formatLevel('major', { color: false })).toBe('major');
@@ -31,7 +31,7 @@ describe('formatLevel', () => {
     expect(formatLevel('minor', { color: true })).toContain('minor');
     expect(formatLevel('patch', { color: true })).toContain('patch');
     expect(formatLevel('mutable', { color: true })).toContain('mutable');
-    expect(formatLevel('none', { color: true })).toBe('');
+    expect(formatLevel('none', { color: true })).toContain('✓');
   });
 });
 

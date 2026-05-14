@@ -31,6 +31,9 @@ export function renderTable(resolutions: readonly Resolution[], opts: RenderTabl
     const ref = r.reference.parsed;
     const action = displayAction(ref);
     const workflow = toPosixPath(path.relative(cwd, r.reference.location.file));
+    // For error rows, the Latest column carries the error text — a green ✓ in Δ would be
+    // misleading, so we surface a yellow ⚠ instead.
+    const delta = r.error ? (opts.color ? pc.yellow('⚠') : '⚠') : formatLevel(r.level, opts);
     table.push([
       opts.color ? pc.dim(workflow) : workflow,
       action,
@@ -40,7 +43,7 @@ export function renderTable(resolutions: readonly Resolution[], opts: RenderTabl
           ? pc.yellow(r.error)
           : r.error
         : formatVersion(r.latest, r.level, opts),
-      formatLevel(r.level, opts),
+      delta,
     ]);
   }
 

@@ -6,9 +6,13 @@ export interface FormatterOptions {
   readonly color: boolean;
 }
 
-/** Format the level label with appropriate color. */
+/**
+ * Format the level label with appropriate color. Up-to-date rows (`level === 'none'`) get a
+ * green ✓ glyph so they're scannable at a glance — a blank Δ column was indistinguishable
+ * from an in-flight or omitted row.
+ */
 export function formatLevel(level: UpdateLevel, opts: FormatterOptions): string {
-  if (!opts.color) return level === 'none' ? '' : level;
+  if (!opts.color) return level === 'none' ? '✓' : level;
   switch (level) {
     case 'major': {
       return pc.bold(pc.red('major'));
@@ -23,7 +27,7 @@ export function formatLevel(level: UpdateLevel, opts: FormatterOptions): string 
       return pc.dim(pc.yellow('mutable'));
     }
     case 'none': {
-      return '';
+      return pc.green('✓');
     }
   }
 }
