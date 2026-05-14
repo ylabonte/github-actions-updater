@@ -9,9 +9,7 @@ Fix floating-tag false positives and Windows CI.
   track, so a `@v4` ref pointing at `v4.7.0` is already up to date. Only cross-track moves
   (`v4` → `v5`, or `v4.1` → `v4.2`) are flagged as bumps now. On `--write`, partial refs
   preserve their style: `@v4` rewrites to `@v5`, not `@v5.0.0`.
-- **Windows: `scanWorkflows` now returns POSIX-style relative paths**, matching every other
-  platform. Fixes three scanner tests and the table snapshot test.
-- **Windows: the integration test no longer ENOENT-spawn-fails** on the `tsx.cmd` shim.
+- **Windows: table rendering and JSON output now show POSIX-style paths**, matching every other platform.
 
 ### New: `--commit` flag
 
