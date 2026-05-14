@@ -41,7 +41,7 @@ inputs:
     required: false
     default: 'false'
   commit:
-    description: 'After --write, stage the changes and produce a non-interactive commit. Implies --no-edit.'
+    description: 'After --write, stage the rewritten workflow files and produce a non-interactive commit — no editor is invoked, the prefilled message is committed verbatim. Has no effect when write is false.'
     required: false
     default: 'false'
   allow-branch-pin:
