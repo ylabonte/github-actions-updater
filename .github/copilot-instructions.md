@@ -48,6 +48,18 @@ Treat **every** change as a potential attack surface. This tool reads files, hit
 
 If you spot a security issue while making an unrelated change, flag it to the user — don't silently patch and move on.
 
+### Documentation surfaces
+
+Doc/code drift is the most-flagged class of issue in our PR reviews. Anything visible at a user-facing contract boundary lives in **multiple files** — when you change a CLI flag, an Action input/output, an exit code, or a behavior described in prose, walk every place the contract is named in the same commit:
+
+- The implementation (`src/` for the CLI, the `run:` script in `action.yml` for the Action).
+- The matching `description:` in `action.yml` for inputs/outputs.
+- The matching row in **`README.md`** tables.
+- The matching paragraph(s) in **`docs/guide/*.md`**.
+- Any open **`.changeset/*.md`** entry that bundles this change.
+
+Before committing, `grep -n` the identifier across the repo. If it's named in three files but updated in one, that's doc drift. Anti-patterns to avoid: universal-sounding claims in scoped sections ("All CLI behavior is unchanged" reads as a whole-release promise even when the section describes one rename), and authoritative-sounding details that aren't verified (don't cite `repo:read` PAT scopes — they don't exist; don't cite `git diff HEAD~1..HEAD` if the script uses a different form).
+
 ## Project conventions
 
 - **Reference styles:** `@v4` (floating major), `@v4.1` (floating minor), `@v4.1.1` (exact), `@<sha> # v4.1.1` (SHA-pinned with required version comment), `@main` (branch — mutable), `docker://image:tag`. Local refs (`./...`) are skipped.
@@ -64,6 +76,15 @@ If you spot a security issue while making an unrelated change, flag it to the us
 - `git commit -t` aborts on unchanged buffers — we use `-F <file> -e -v` instead.
 - Vitest 4 dropped `coverage.all`. Don't reintroduce.
 - pnpm 11 needs explicit `allowBuilds` in `pnpm-workspace.yaml` for esbuild.
+- `process.stdin.isTTY` is ambient — force it explicitly in tests with `Object.defineProperty` + `try/finally`, otherwise the test passes in CI and fails locally (or vice versa).
+- Composite Action input defaults are literal strings — `default: ${{ github.token }}` is the string, not the token. Use an empty default + `env:`-block expression fallback.
+- `set -euo pipefail` + `cli | tee out` + a CLI that may exit non-zero will kill the script before subsequent commands. Wrap: `set +e` → pipe → `cap=${PIPESTATUS[0]}` → `set -e` → write outputs → `exit "$cap"`.
+- `jq` itself fails on empty/invalid JSON — `// 0` only handles missing fields, not parse errors. Combine with `2>/dev/null || echo 0`.
+- Fixed `$RUNNER_TEMP/<name>.json` collides under multi-use in one job. `mktemp "$RUNNER_TEMP/<name>.XXXXXXXX.json"` is the fix.
+- `extra=($VAR)` enables pathname expansion in bash — globs in `$VAR` expand against the workspace. Use `read -r -a extra <<<"$VAR"`, then guard `(( ${#extra[@]} > 0 ))` because whitespace-only input parses to an empty array and a bare `--flag` eats the next argument.
+- Unborn-branch git ops: `git rev-parse HEAD` is empty. Code paths diffing HEAD before/after need a `git diff-tree --root <after>` fallback when the "before" is empty.
+- `git diff -- '*.yml'` matches basenames across the entire tree. Scope to a directory: `git diff -- "$dir/*.yml" "$dir/*.yaml"`.
+- npm package specs accept tarball URLs, git URLs, file paths, and `npm:other-pkg@...` aliases. Allowlist user-controlled values (e.g. `^[A-Za-z0-9][A-Za-z0-9._+-]*$`) before passing to `npx`.
 
 ## Useful commands
 
