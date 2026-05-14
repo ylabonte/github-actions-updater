@@ -15,7 +15,7 @@ Vitest, linted with ESLint strict-type-checked + unicorn, formatted with Prettie
 2. **Track work in tasks.** Anything bigger than a one-line tweak: create discrete tasks, mark them `in_progress`/`completed` as you go. Don't batch.
 3. **Changesets — interactively.** Before adding or modifying a `.changeset/*.md` entry, ask the user: add to existing, new file, or skip?
 4. **Atomic commits.** Conventional prefixes (`feat`, `fix`, `chore`, `docs`, `test`, `refactor`; `!` for breaking). Body explains _why_.
-5. **Confirm every `git commit` / `git push`.** Even in autonomous modes, pause for the user. The Claude-side rule lives in `.claude/settings.local.json` (`permissions.ask`); the Copilot-equivalent is to surface the command and wait for explicit OK before running.
+5. **Confirm every `git commit` / `git push` with a rich, message-visible prompt.** Even in autonomous modes, present the full commit message (for commits) or the list of commits being pushed (for pushes) in an interactive prompt the user can navigate with arrow keys, with options `Approve` / `Alter the message` / `Cancel` for commits and `Approve` / `Cancel` for pushes. The Claude-side mechanism is `AskUserQuestion` with the message in the option `preview` field; never fall back to a plain Y/N. Copilot users implement the same shape with whatever rich-prompt facility is available; if none, surface the full message in chat and wait for an explicit reply.
 
 ## Code review lenses — apply to every change
 

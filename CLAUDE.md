@@ -185,26 +185,64 @@ The default-0 is deliberate — see the changeset for `--fail-on-outdated`. Don'
 - Body explains _why_, not what — the diff already says what.
 - Never `--no-verify`, never `--force` without explicit user authorization.
 
-### Confirm before commits and pushes — always
+### Confirm before commits and pushes — always, via `AskUserQuestion`
 
-Even in auto/yolo mode, `git commit` and `git push` are gated. The enforcement lives
-in `.claude/settings.local.json` under `permissions.ask`:
+Even in auto/yolo mode, `git commit` and `git push` must be confirmed by the user. The
+confirmation must use `AskUserQuestion` with the commit message (or, for push, the list
+of commits being pushed) rendered in an option `preview`. Plain Y/N harness prompts via
+`permissions.ask` are explicitly removed — the rich preview is the whole point.
 
-```json
-{
-  "permissions": {
-    "ask": ["Bash(git commit:*)", "Bash(git push:*)", "Bash(git push)"]
-  }
-}
+**Shape of the prompt for `git commit`:**
+
+- Question: short, e.g. `"Commit these changes?"`
+- One option labelled `Approve` (or similar) whose `preview` is the full multi-line
+  commit message you're about to use. Arrow keys navigate; Enter selects.
+- One option labelled `Alter the message` — when chosen, follow up by asking what to
+  change, then re-issue the question with the revised preview.
+- One option labelled `Cancel` — when chosen, do nothing and tell the user so.
+
+**Shape of the prompt for `git push`:**
+
+- Question: e.g. `"Push to <branch>?"`
+- One option `Approve` whose `preview` is the output of `git log @{upstream}..HEAD
+--oneline --decorate` (or, for a new branch, `git log -<N> --oneline`), so the user
+  sees exactly which commits leave the local machine.
+- One option `Cancel`.
+- No `Alter` option for push — the commits are already shaped; if the user wants to
+  change them, they pick `Cancel`, then ask for amends explicitly.
+
+**Example call:**
+
+```ts
+AskUserQuestion({
+  questions: [
+    {
+      question: 'Commit these changes?',
+      header: 'Commit',
+      multiSelect: false,
+      options: [
+        {
+          label: 'Approve',
+          description: 'Commit with the message shown.',
+          preview: '<full commit message here>',
+        },
+        { label: 'Alter the message', description: 'Tell me what to change in the next message.' },
+        { label: 'Cancel', description: 'Leave the staged changes in place; do not commit.' },
+      ],
+    },
+  ],
+});
 ```
 
-The file is **not committed** (ignored via `.gitignore`); each contributor maintains
-their own copy. The rule means Claude Code prompts the user before running either
-command, regardless of autonomy level. Don't try to bypass it — the prompt is the
-user's last sanity check, and it costs almost nothing to wait for.
+Rules:
 
-If you want to commit several things in rapid succession, batch the diff into one
-logical commit rather than spamming approvals.
+- **Never** invoke `git commit` or `git push` from Bash before this prompt has been
+  approved. The prompt is the only sanity check on irreversible-ish actions.
+- If you want to commit several things in rapid succession, **batch** the diff into one
+  logical commit rather than spamming prompts.
+- The harness-level `permissions.ask` was intentionally removed from
+  `.claude/settings.local.json` to avoid double-prompting. If you decide you want the
+  belt-and-braces backstop, the original block is documented as a comment in that file.
 
 ## Common pitfalls (we've hit these)
 
