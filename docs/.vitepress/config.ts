@@ -8,6 +8,14 @@ export default defineConfig({
   base: process.env['DOCS_BASE'] ?? `/${REPO}/`,
   cleanUrls: true,
   lastUpdated: true,
+  // esbuild 0.27 refuses to transpile vitepress 1.6's parameter-destructuring patterns to
+  // the default `es2020` target ("not supported yet"). Bumping the build target to esnext
+  // skips the down-level transform — modern evergreen browsers already support these.
+  vite: {
+    build: {
+      target: 'esnext',
+    },
+  },
   themeConfig: {
     nav: [
       { text: 'Guide', link: '/guide/quickstart' },
