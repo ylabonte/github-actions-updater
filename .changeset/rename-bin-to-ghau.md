@@ -28,7 +28,10 @@ binary is removed — no transition period — because keeping it as a
 deprecated alias wouldn't have helped Oh My Zsh users anyway (the
 shell alias still wins).
 
-All CLI behavior, flags, exit codes, and output formats are unchanged.
+The rename itself changes nothing about CLI behavior — flags, exit codes,
+output formats, and interactive prompts are byte-for-byte identical to the
+previous release. See the sections below for the actual additive features
+bundled into this release.
 
 ### Also in this release: `--no-edit` for non-interactive commits
 
