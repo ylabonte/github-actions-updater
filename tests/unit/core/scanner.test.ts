@@ -9,7 +9,7 @@ describe('scanWorkflows', () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'gau-test-'));
+    cwd = await mkdtemp(join(tmpdir(), 'ghau-test-'));
   });
 
   afterEach(async () => {

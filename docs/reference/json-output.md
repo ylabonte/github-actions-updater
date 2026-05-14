@@ -1,6 +1,6 @@
 # JSON output
 
-When invoked with `--json`, `gau` writes a structured report to stdout instead of the table.
+When invoked with `--json`, `ghau` writes a structured report to stdout instead of the table.
 
 ## Top-level shape
 

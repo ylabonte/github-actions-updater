@@ -29,7 +29,7 @@ describe('runInteractive', () => {
   const original = 'jobs:\n  x:\n    steps:\n      - uses: actions/checkout@v3\n';
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'gau-interactive-'));
+    cwd = await mkdtemp(join(tmpdir(), 'ghau-interactive-'));
     await mkdir(join(cwd, 'wf'), { recursive: true });
     file = join(cwd, 'wf', 'ci.yml');
     await writeFile(file, original);

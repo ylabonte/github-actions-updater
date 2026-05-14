@@ -19,13 +19,13 @@ features:
   - title: Polished CLI
     details: Colored, glyph-bordered table by default. `--json` for CI. Interactive multi-select with `-i`.
   - title: Surgical YAML rewrites
-    details: `--write` replaces version strings in place. Comments, formatting, and whitespace stay exactly as you wrote them.
+    details: '`--write` replaces version strings in place. Comments, formatting, and whitespace stay exactly as you wrote them.'
   - title: Auth chain that just works
-    details: `GITHUB_TOKEN` → `gh auth token` → anonymous, in that order. No flags needed in most setups.
+    details: '`GITHUB_TOKEN` → `gh auth token` → anonymous, in that order. No flags needed in most setups.'
   - title: Tested above 90%
     details: 142+ unit and integration tests. Strict TypeScript. Zero shell-injection surface.
   - title: Self-checking
-    details: This repo runs `gau` against its own workflows every Monday. The tool maintains itself.
+    details: This repo runs `ghau` against its own workflows every Monday. The tool maintains itself.
 ---
 
 ## Install
@@ -45,14 +45,14 @@ npx github-actions-updater
 
 ```bash
 # Scan and report
-gau
+ghau
 
 # Apply every available update
-gau -u
+ghau -u
 
 # Pick what to apply
-gau -i
+ghau -i
 
 # CI-friendly machine output
-gau --json
+ghau --json
 ```

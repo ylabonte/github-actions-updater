@@ -6,12 +6,12 @@ the same rules every session.
 
 ## Project at a glance
 
-- **What it is.** A CLI (`gau`) that scans `.github/workflows/*.{yml,yaml}` for outdated
+- **What it is.** A CLI (`ghau`) that scans `.github/workflows/*.{yml,yaml}` for outdated
   remote `uses:` references and optionally rewrites them in place. Think `ncu`, but
   for GitHub Actions.
 - **Stack.** TypeScript ESM, Node 20+, pnpm. Vitest + `@vitest/coverage-v8`. ESLint
   (strict-type-checked + unicorn) + Prettier. VitePress for docs. Changesets for
-  releases. Targets `github-actions-updater` on npm; binary is `gau`.
+  releases. Targets `github-actions-updater` on npm; binary is `ghau`.
 - **Architecture.** `src/core/` (scanner, parser, comparator, resolvers, auth) is the
   pure-ish domain; `src/io/` (yaml-writer, table/json renderers) handles the boundary;
   `src/commands/` (check, update, interactive, git-commit) orchestrates; `src/cli.ts`
@@ -114,7 +114,7 @@ Every change must be evaluated against these:
 - **Supply chain.** When bumping a dependency, check the GitHub Dependabot tab on the
   remote afterward — moderate advisories should land as `pnpm.overrides` entries
   before merging.
-- **Workflow file rewriting.** `gau --write` rewrites files inside the user's repo. Any
+- **Workflow file rewriting.** `ghau --write` rewrites files inside the user's repo. Any
   resolver that produces a `Replacement` must guarantee the `newValue` is well-formed
   YAML in `uses:` context. No newlines, no `:` outside expected places, no leading
   whitespace tricks.

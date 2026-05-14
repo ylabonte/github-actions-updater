@@ -15,7 +15,7 @@ Fix floating-tag false positives and Windows CI.
 
 ### New: `--commit` flag
 
-Add `--commit` to `--write` or `--interactive` and `gau` will, after the workflow files
+Add `--commit` to `--write` or `--interactive` and `ghau` will, after the workflow files
 are rewritten, stage them with `git add` and open `git commit -v` with a pre-filled
 message — first line summary plus one bullet per updated action. Skipped (with a warning)
 if you're not inside a git repository.

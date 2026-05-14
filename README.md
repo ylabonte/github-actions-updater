@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 ```shell
-$ gau
+$ ghau
 ┌──────────────────────────┬────────────────────┬─────────┬────────┬───────┐
 │ Workflow                 │ Action             │ Current │ Latest │ Δ     │
 ├──────────────────────────┼────────────────────┼─────────┼────────┼───────┤
@@ -27,17 +27,17 @@ pnpm add -g github-actions-updater
 npx github-actions-updater
 ```
 
-The installed binary is `gau`.
+The installed binary is `ghau`.
 
 ## Usage
 
 ```bash
-gau                       # scan and report
-gau -u                    # apply every available update
-gau -i                    # pick interactively
-gau --json                # machine-readable
-gau --target minor        # stay within current major
-gau --filter 'actions/*'  # only first-party actions
+ghau                       # scan and report
+ghau -u                    # apply every available update
+ghau -i                    # pick interactively
+ghau --json                # machine-readable
+ghau --target minor        # stay within current major
+ghau --filter 'actions/*'  # only first-party actions
 ```
 
 Exit codes:
@@ -63,7 +63,7 @@ For SHA-pinned refs, both the SHA and the trailing `# vX.Y.Z` comment are update
 
 ## Auth
 
-`gau` looks for a token in this order:
+`ghau` looks for a token in this order:
 
 1. `--token <token>` flag
 2. `GITHUB_TOKEN` / `GH_TOKEN` env var
@@ -72,7 +72,7 @@ For SHA-pinned refs, both the SHA and the trailing `# vX.Y.Z` comment are update
 
 ## Why?
 
-There's no real shortage of update tooling for Node.js dependencies, but action references tend to drift quietly. `ncu` doesn't see them. Dependabot does, but its PR-driven flow is heavy for repos with a handful of actions. `gau` fills the gap — a small, local-first CLI you can run before a commit or in CI.
+There's no real shortage of update tooling for Node.js dependencies, but action references tend to drift quietly. `ncu` doesn't see them. Dependabot does, but its PR-driven flow is heavy for repos with a handful of actions. `ghau` fills the gap — a small, local-first CLI you can run before a commit or in CI.
 
 ## Documentation
 
@@ -99,6 +99,6 @@ Issues and PRs welcome. Run `pnpm changeset` when adding user-visible changes; t
 
 ---
 
-If `gau` saved you some time, a coffee is always appreciated — entirely optional, never expected.
+If `ghau` saved you some time, a coffee is always appreciated — entirely optional, never expected.
 
 <a href="https://www.buymeacoffee.com/ylabonte"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="40" width="144"></a>

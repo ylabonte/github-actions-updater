@@ -1,5 +1,5 @@
 /**
- * Programmatic entry point. The primary interface is the `gau` CLI, but we expose the core
+ * Programmatic entry point. The primary interface is the `ghau` CLI, but we expose the core
  * pieces here so they can be used as a library if someone needs to integrate the check
  * into another tool.
  */

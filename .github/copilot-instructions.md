@@ -5,7 +5,7 @@ when the workflow rules in `CLAUDE.md` change.
 
 ## What this project is
 
-A CLI (`gau`) that scans `.github/workflows/*.{yml,yaml}` for outdated remote `uses:`
+A CLI (`ghau`) that scans `.github/workflows/*.{yml,yaml}` for outdated remote `uses:`
 references and optionally rewrites them. TypeScript ESM, Node 20+, pnpm. Tested with
 Vitest, linted with ESLint strict-type-checked + unicorn, formatted with Prettier.
 

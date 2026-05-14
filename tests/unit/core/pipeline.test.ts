@@ -30,7 +30,7 @@ describe('runPipeline', () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'gau-pipe-'));
+    cwd = await mkdtemp(join(tmpdir(), 'ghau-pipe-'));
     const wfDir = join(cwd, '.github', 'workflows');
     await mkdir(wfDir, { recursive: true });
     await writeFile(join(wfDir, 'ci.yml'), WORKFLOW);

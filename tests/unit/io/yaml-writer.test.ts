@@ -80,7 +80,7 @@ describe('rewriteContent', () => {
   });
 
   it('persists changes to disk via writeWorkflow', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'gau-write-'));
+    const dir = await mkdtemp(join(tmpdir(), 'ghau-write-'));
     try {
       const file = join(dir, 'wf.yml');
       await writeFile(file, 'name: t\n');

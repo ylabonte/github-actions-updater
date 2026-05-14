@@ -12,7 +12,7 @@ describe('applyUpdates', () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), 'gau-update-'));
+    cwd = await mkdtemp(join(tmpdir(), 'ghau-update-'));
     await mkdir(join(cwd, 'wf'), { recursive: true });
   });
 

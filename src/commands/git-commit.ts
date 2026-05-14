@@ -54,7 +54,7 @@ export async function commitUpdates(
   }
 
   const template = buildCommitMessage(applied);
-  const tempDir = await mkdtemp(path.join(tmpdir(), 'gau-commit-'));
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'ghau-commit-'));
   const templatePath = path.join(tempDir, 'COMMIT_EDITMSG');
 
   try {
@@ -105,7 +105,7 @@ export function buildCommitMessage(applied: readonly Resolution[]): string {
 
   lines.push(
     '',
-    '# Prepared by github-actions-updater (gau).',
+    '# Prepared by github-actions-updater (ghau).',
     '# Edit this message as you like, then save and close to commit.',
     '# Leave the message empty (or delete all non-# lines) to abort the commit.',
     '',

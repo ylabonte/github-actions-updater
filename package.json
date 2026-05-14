@@ -19,7 +19,7 @@
     "node": ">=20.0.0"
   },
   "bin": {
-    "gau": "./dist/cli.js"
+    "ghau": "./dist/cli.js"
   },
   "main": "./dist/index.js",
   "exports": {

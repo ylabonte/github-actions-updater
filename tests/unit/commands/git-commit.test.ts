@@ -83,7 +83,7 @@ describe('commitUpdates (no-op paths)', () => {
   let cwd: string;
 
   beforeEach(async () => {
-    cwd = await mkdtemp(path.join(tmpdir(), 'gau-commit-test-'));
+    cwd = await mkdtemp(path.join(tmpdir(), 'ghau-commit-test-'));
   });
 
   afterEach(async () => {
@@ -135,7 +135,7 @@ describe('commitUpdates (no-op paths)', () => {
     expect(capturedArgs?.slice(0, 4)).toEqual(['commit', '-v', '-e', '-F']);
     // The seed file passed via -F lives under our tmpdir.
     const seedArg = capturedArgs?.[4];
-    expect(seedArg?.includes('gau-commit-')).toBe(true);
+    expect(seedArg?.includes('ghau-commit-')).toBe(true);
 
     // Staged file should appear in the index. Git emits POSIX-style paths on every platform,
     // so we normalize our expectation through path.relative + replace.
