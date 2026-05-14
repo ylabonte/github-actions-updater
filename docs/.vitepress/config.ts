@@ -1,0 +1,66 @@
+import { defineConfig } from 'vitepress';
+
+const REPO = 'github-actions-updater';
+
+export default defineConfig({
+  title: 'github-actions-updater',
+  description: 'ncu for GitHub Actions — find and apply updates to remote action references.',
+  base: process.env['DOCS_BASE'] ?? `/${REPO}/`,
+  cleanUrls: true,
+  lastUpdated: true,
+  themeConfig: {
+    nav: [
+      { text: 'Guide', link: '/guide/quickstart' },
+      { text: 'CLI reference', link: '/reference/cli' },
+      { text: 'Recipes', link: '/recipes/' },
+      { text: 'GitHub', link: `https://github.com/yannic/${REPO}` },
+    ],
+    sidebar: {
+      '/guide/': [
+        {
+          text: 'Getting started',
+          items: [
+            { text: 'Quickstart', link: '/guide/quickstart' },
+            { text: 'How it works', link: '/guide/how-it-works' },
+            { text: 'CI integration', link: '/guide/ci-integration' },
+          ],
+        },
+        {
+          text: 'Workflows',
+          items: [
+            { text: 'SHA pinning', link: '/guide/sha-pinning' },
+            { text: 'Config file', link: '/guide/config-file' },
+            { text: 'Authentication', link: '/guide/authentication' },
+          ],
+        },
+      ],
+      '/reference/': [
+        {
+          text: 'Reference',
+          items: [
+            { text: 'CLI', link: '/reference/cli' },
+            { text: 'JSON output', link: '/reference/json-output' },
+          ],
+        },
+      ],
+      '/recipes/': [
+        {
+          text: 'Recipes',
+          items: [
+            { text: 'Overview', link: '/recipes/' },
+            { text: 'Monorepos', link: '/recipes/monorepo' },
+            { text: 'Ignoring actions', link: '/recipes/ignoring' },
+          ],
+        },
+      ],
+    },
+    search: { provider: 'local' },
+    footer: {
+      message: 'Released under the MIT License.',
+      copyright: 'Copyright © Yannic Labonte',
+    },
+    editLink: {
+      pattern: `https://github.com/yannic/${REPO}/edit/main/docs/:path`,
+    },
+  },
+});
