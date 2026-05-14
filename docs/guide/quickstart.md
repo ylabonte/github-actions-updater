@@ -56,9 +56,13 @@ ghau --write
 Add `--commit` to also stage the changes and open `git commit -v` with a pre-filled message:
 
 ```bash
-ghau -u --commit       # apply + open editor
-ghau -i --commit       # pick + apply + open editor
+ghau -u --commit            # apply + open editor
+ghau -i --commit            # pick + apply + open editor
+ghau -u --commit --no-edit  # apply + commit verbatim, no editor (CI-friendly)
 ```
+
+`--no-edit` (or running with stdin redirected, e.g. in a CI workflow) commits the
+prefilled message as-is without launching an editor.
 
 ## Pick interactively
 

@@ -58,4 +58,6 @@ Add `--commit` to `--write` or `--interactive` and `ghau` will, after the workfl
 
 You're in the editor — save to commit, or leave the message empty to abort. The `-v` flag includes the diff in the editor view so you can sanity-check the rewrite before sealing the commit.
 
+Pass `--no-edit` (or run in a non-TTY environment like CI) to skip the editor entirely; `ghau` then commits the prefilled message verbatim. That's the path the GitHub Action wrapper takes.
+
 Skipped if you're not inside a git repository (a warning is printed; the file writes still happen).

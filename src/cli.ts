@@ -46,6 +46,10 @@ export function buildProgram() {
       false,
     )
     .option(
+      '--no-edit',
+      'with --commit: commit the prefilled message verbatim without opening an editor (auto-enabled when stdin is not a TTY)',
+    )
+    .option(
       '--fail-on-outdated',
       'exit 1 when outdated entries are found (default: exit 0 unless an actual error occurred)',
       false,
@@ -96,7 +100,7 @@ export async function main(argv: readonly string[]): Promise<number> {
         ...(opts.allowBranchPin && { allowBranchPin: true }),
       });
       if (opts.commit) {
-        await runCommit(applied);
+        await runCommit(applied, !opts.edit);
       }
       return 0;
     }
@@ -120,10 +124,11 @@ export async function main(argv: readonly string[]): Promise<number> {
       }
       if (opts.commit) {
         // Pause so the user can actually look at the table before the editor takes over the
-        // screen. Skipped when there's no TTY (CI) or when emitting JSON (machine flows).
-        // The `-i` path doesn't need this — the multiselect already gave the user a chance to
-        // review and choose.
-        if (process.stdin.isTTY && !opts.json) {
+        // screen. Skipped when there's no TTY (CI), when emitting JSON (machine flow), or
+        // when --no-edit was explicitly passed (script-style flow, no editor would open
+        // anyway). The `-i` path doesn't need this — the multiselect already gave the user
+        // a chance to review and choose.
+        if (process.stdin.isTTY && !opts.json && opts.edit) {
           const proceed = await confirm({
             message: 'Open the editor to review and confirm the commit message?',
             initialValue: true,
@@ -133,7 +138,7 @@ export async function main(argv: readonly string[]): Promise<number> {
             return 0;
           }
         }
-        await runCommit(outcome.applied);
+        await runCommit(outcome.applied, !opts.edit);
       }
       return 0;
     }
@@ -154,8 +159,8 @@ export async function main(argv: readonly string[]): Promise<number> {
   }
 }
 
-async function runCommit(applied: readonly Resolution[]): Promise<void> {
-  const result = await commitUpdates(applied);
+async function runCommit(applied: readonly Resolution[], noEdit = false): Promise<void> {
+  const result = await commitUpdates(applied, { noEdit });
   if (result.committed) {
     process.stdout.write(pc.green('\n✔ Committed.\n'));
   } else if (result.reason) {

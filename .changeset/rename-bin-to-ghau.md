@@ -29,3 +29,13 @@ deprecated alias wouldn't have helped Oh My Zsh users anyway (the
 shell alias still wins).
 
 All CLI behavior, flags, exit codes, and output formats are unchanged.
+
+### Also in this release: `--no-edit` for non-interactive commits
+
+`--commit` previously always passed `-e` to `git commit`, which forces an editor open. That was fine for the interactive desktop flow but unusable in CI without setting `GIT_EDITOR` to something non-interactive. The new `--no-edit` flag (mirrors `git commit --no-edit`) commits the prefilled message verbatim, no editor invocation.
+
+`--no-edit` is also auto-enabled when stdin is not a TTY — so CI flows (including the upcoming GitHub Action wrapper) work out of the box even without the explicit flag.
+
+```bash
+ghau -u --commit --no-edit    # CI-friendly: commits the prefilled message as-is
+```

@@ -103,7 +103,7 @@ describe('commitUpdates (no-op paths)', () => {
     expect(result.reason).toMatch(/git/);
   });
 
-  it('stages files and reports success when the injected spawn returns 0', async () => {
+  it('stages files and reports success (non-TTY → no `-e`)', async () => {
     await run('git', ['init', '-b', 'main', '--quiet', cwd], { cwd });
     await run('git', ['config', 'user.email', 'test@example.com'], { cwd });
     await run('git', ['config', 'user.name', 'Test'], { cwd });
@@ -122,6 +122,8 @@ describe('commitUpdates (no-op paths)', () => {
       outdated: true,
     };
 
+    // Test runs under vitest with stdin piped — process.stdin.isTTY is not `true`, so the
+    // commit goes through the non-interactive path and `-e` is omitted.
     let capturedArgs: readonly string[] | undefined;
     const result = await commitUpdates([resolution], {
       cwd,
@@ -132,9 +134,9 @@ describe('commitUpdates (no-op paths)', () => {
     });
 
     expect(result.committed).toBe(true);
-    expect(capturedArgs?.slice(0, 4)).toEqual(['commit', '-v', '-e', '-F']);
-    // The seed file passed via -F lives under our tmpdir.
-    const seedArg = capturedArgs?.[4];
+    expect(capturedArgs?.slice(0, 3)).toEqual(['commit', '-v', '-F']);
+    expect(capturedArgs).not.toContain('-e');
+    const seedArg = capturedArgs?.[3];
     expect(seedArg?.includes('ghau-commit-')).toBe(true);
 
     // Staged file should appear in the index. Git emits POSIX-style paths on every platform,
@@ -144,6 +146,82 @@ describe('commitUpdates (no-op paths)', () => {
     });
     const expected = path.relative(cwd, file).split(path.sep).join('/');
     expect(staged.trim()).toBe(expected);
+  });
+
+  it('omits `-e` when noEdit is explicitly set, even in a TTY', async () => {
+    await run('git', ['init', '-b', 'main', '--quiet', cwd], { cwd });
+    await run('git', ['config', 'user.email', 'test@example.com'], { cwd });
+    await run('git', ['config', 'user.name', 'Test'], { cwd });
+    await mkdir(path.join(cwd, 'wf'), { recursive: true });
+    const file = path.join(cwd, 'wf', 'ci.yml');
+    await writeFile(file, 'jobs:\n  x:\n    steps:\n      - uses: actions/checkout@v4.2.0\n');
+
+    const resolution: Resolution = {
+      reference: {
+        ...makeReference('actions/checkout@v3'),
+        location: { file, line: 1, column: 1, offset: 0, endOffset: 0 },
+      },
+      current: 'v3',
+      latest: 'v4',
+      level: 'major',
+      outdated: true,
+    };
+
+    // Force the TTY branch to be observable, then verify noEdit still wins.
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, 'isTTY', { configurable: true, value: true });
+    try {
+      let capturedArgs: readonly string[] | undefined;
+      await commitUpdates([resolution], {
+        cwd,
+        noEdit: true,
+        spawnCommit: async (args) => {
+          capturedArgs = args;
+          return 0;
+        },
+      });
+      expect(capturedArgs).not.toContain('-e');
+      expect(capturedArgs?.slice(0, 3)).toEqual(['commit', '-v', '-F']);
+    } finally {
+      Object.defineProperty(process.stdin, 'isTTY', { configurable: true, value: originalIsTTY });
+    }
+  });
+
+  it('includes `-e` when in a TTY and noEdit is not set', async () => {
+    await run('git', ['init', '-b', 'main', '--quiet', cwd], { cwd });
+    await run('git', ['config', 'user.email', 'test@example.com'], { cwd });
+    await run('git', ['config', 'user.name', 'Test'], { cwd });
+    await mkdir(path.join(cwd, 'wf'), { recursive: true });
+    const file = path.join(cwd, 'wf', 'ci.yml');
+    await writeFile(file, 'jobs:\n  x:\n    steps:\n      - uses: actions/checkout@v4.2.0\n');
+
+    const resolution: Resolution = {
+      reference: {
+        ...makeReference('actions/checkout@v3'),
+        location: { file, line: 1, column: 1, offset: 0, endOffset: 0 },
+      },
+      current: 'v3',
+      latest: 'v4',
+      level: 'major',
+      outdated: true,
+    };
+
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, 'isTTY', { configurable: true, value: true });
+    try {
+      let capturedArgs: readonly string[] | undefined;
+      await commitUpdates([resolution], {
+        cwd,
+        spawnCommit: async (args) => {
+          capturedArgs = args;
+          return 0;
+        },
+      });
+      expect(capturedArgs).toContain('-e');
+      expect(capturedArgs?.slice(0, 4)).toEqual(['commit', '-v', '-e', '-F']);
+    } finally {
+      Object.defineProperty(process.stdin, 'isTTY', { configurable: true, value: originalIsTTY });
+    }
   });
 
   it('reports non-zero exit code from injected spawn', async () => {
