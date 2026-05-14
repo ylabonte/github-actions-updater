@@ -216,6 +216,16 @@ The rule applies to:
 - `gh pr create` — preview is the **PR title plus the full body**.
 - `gh pr edit` — preview is the resulting title/body (the new state, not the diff).
 - `gh pr comment`, `gh pr review` — preview is the comment / review body.
+- **Replying to a PR review comment or discussion thread** (via
+  `gh api repos/…/pulls/N/comments/<id>/replies` or the equivalent GraphQL
+  `addPullRequestReviewThreadReply`) — preview is the reply body. When responding to
+  multiple inline comments from the same review, **batch all the replies into a single
+  prompt** whose preview lists every reply with its target file:line header. One
+  prompt per review, not one prompt per comment.
+- **Resolving / unresolving a PR review thread** (GraphQL `resolveReviewThread` /
+  `unresolveReviewThread`) — `Approve` / `Cancel`. When resolving a batch of threads
+  that were all responded to together, batch the resolutions into the same single
+  prompt that approves the replies (so a review response is one user gesture, not N).
 - `gh pr merge`, `gh pr close`, `gh pr reopen` — preview is a short statement of which
   PR changes state and how (e.g. `#42 → merged via squash`). No `Alter` option.
 - `gh issue create` / `edit` / `comment` / `close` / `reopen` — same shape as PR.
@@ -224,7 +234,8 @@ The rule applies to:
 - Anything posting to a third-party service (Slack, gist, paste, registry).
 
 If you're touching shared state — or about to write something that'll appear in a
-public changelog — ask first.
+public changelog, in a reviewer's inbox, or in someone else's GitHub notifications —
+ask first.
 
 **Shape of the prompt:**
 
@@ -234,7 +245,9 @@ public changelog — ask first.
 | Push                       | `Approve` / `Cancel`                                                                                                      | `git log @{upstream}..HEAD --oneline --decorate` (or, for a new branch, `git log -<N> --oneline`). |
 | PR create                  | `Approve` / `Alter title` / `Alter body` / `Cancel` (use multiSelect=false; pick the most-likely-to-be-asked-for `Alter`) | `<title>\n\n<full body>`.                                                                          |
 | PR edit / comment / review | `Approve` / `Alter the body` / `Cancel`                                                                                   | The new title+body or comment body.                                                                |
+| PR review reply (batch)    | `Approve` / `Alter` / `Cancel`                                                                                            | Every reply body in the batch, each prefixed with `── <file>:<line> ──`.                           |
 | PR / issue state change    | `Approve` / `Cancel`                                                                                                      | One-line statement (`#42 → closed`, `#42 → merged via squash and merge`).                          |
+| Thread resolve (batch)     | `Approve` / `Cancel`                                                                                                      | List of `<file>:<line>` threads being resolved.                                                    |
 | Changeset add / edit       | `Approve` / `Alter` / `Skip` / `Cancel`                                                                                   | Full proposed `.changeset/*.md` content (frontmatter + body).                                      |
 
 When the user picks `Alter ...`, follow up by asking what to change (or ask for new
