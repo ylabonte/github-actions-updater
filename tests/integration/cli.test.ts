@@ -7,7 +7,12 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const CLI = join(__dirname, '..', '..', 'src', 'cli.ts');
-const TSX = join(__dirname, '..', '..', 'node_modules', '.bin', 'tsx');
+const IS_WIN = process.platform === 'win32';
+// On Windows, the tsx shim is installed as `tsx.cmd`. Spawning a `.cmd` file without a shell
+// reaches Node's CVE-2024-27980 guard and fails with ENOENT. Routing through the shell is
+// the simplest portable resolution; the args are static test strings so there's no
+// injection surface.
+const TSX = join(__dirname, '..', '..', 'node_modules', '.bin', IS_WIN ? 'tsx.cmd' : 'tsx');
 
 interface RunResult {
   stdout: string;
@@ -17,14 +22,15 @@ interface RunResult {
 
 /**
  * Spawn the CLI through tsx so we don't depend on `pnpm build` having run. Runs offline by
- * stubbing the GitHub token to a deliberately invalid value — tests that need network
- * responses are unit-tested separately with fake clients.
+ * blanking the GitHub token — tests that need network responses are unit-tested separately
+ * with fake clients.
  */
 function runCli(args: readonly string[], cwd: string): Promise<RunResult> {
   return new Promise((resolve) => {
     const child = spawn(TSX, [CLI, ...args], {
       cwd,
       env: { ...process.env, GITHUB_TOKEN: '', GH_TOKEN: '', PATH: process.env['PATH'] },
+      shell: IS_WIN,
     });
     let stdout = '';
     let stderr = '';

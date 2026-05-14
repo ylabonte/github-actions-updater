@@ -57,6 +57,15 @@ describe('scanWorkflows', () => {
     ]);
   });
 
+  it('returns POSIX-style relativePath on all platforms', async () => {
+    const wf = join(cwd, '.github', 'workflows');
+    await mkdir(wf, { recursive: true });
+    await writeFile(join(wf, 'a.yml'), '');
+    const files = await scanWorkflows({ cwd });
+    expect(files[0]?.relativePath).toBe('.github/workflows/a.yml');
+    expect(files[0]?.relativePath).not.toContain('\\');
+  });
+
   it('skips subdirectories', async () => {
     const wf = join(cwd, '.github', 'workflows');
     await mkdir(join(wf, 'subdir'), { recursive: true });
