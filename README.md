@@ -40,7 +40,13 @@ gau --target minor        # stay within current major
 gau --filter 'actions/*'  # only first-party actions
 ```
 
-Exit codes: `0` = current, `1` = outdated, `2` = error.
+Exit codes:
+
+| Code | When                                                                                                                        |
+| ---- | --------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | The scan ran. By default outdated entries do **not** fail the run — pass `--fail-on-outdated` if you want them to.          |
+| `1`  | At least one resolution errored (and not every resolution did), or `--fail-on-outdated` was set and outdated entries exist. |
+| `2`  | Every resolution errored — usually auth or network.                                                                         |
 
 ## Reference styles supported
 
