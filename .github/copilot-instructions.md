@@ -56,6 +56,7 @@ Doc/code drift is the most-flagged class of issue in our PR reviews. Anything vi
 - The matching `description:` in `action.yml` for inputs/outputs.
 - The matching row in **`README.md`** tables.
 - The matching paragraph(s) in **`docs/guide/*.md`**.
+- **CLI self-docs.** Any `src/cli.ts` change also propagates into (a) commander's `--help` output — sanity-check with `pnpm dev -- --help`; (b) `docs/reference/cli.md`, which is auto-generated and must be regenerated via `pnpm docs:gen-cli` (CI doesn't gate this); (c) the runnable example snippets in `README.md`'s "Usage" block and `docs/guide/quickstart.md`.
 - Any open **`.changeset/*.md`** entry that bundles this change.
 
 Before committing, `grep -n` the identifier across the repo. If it's named in three files but updated in one, that's doc drift. Anti-patterns to avoid: universal-sounding claims in scoped sections ("All CLI behavior is unchanged" reads as a whole-release promise even when the section describes one rename), and authoritative-sounding details that aren't verified (don't cite `repo:read` PAT scopes — they don't exist; don't cite `git diff HEAD~1..HEAD` if the script uses a different form).
