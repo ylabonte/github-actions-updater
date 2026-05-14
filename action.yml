@@ -153,7 +153,13 @@ runs:
         changes=0
         if [[ "$GHAU_WRITE" == "true" ]] && git rev-parse --git-dir >/dev/null 2>&1; then
           head_after=$(git rev-parse HEAD 2>/dev/null || true)
-          if [[ -n "$head_before" && -n "$head_after" && "$head_before" != "$head_after" ]]; then
+          if [[ -z "$head_before" && -n "$head_after" ]]; then
+            # Unborn branch case: `--commit` just produced the very first commit,
+            # so HEAD advanced from "nothing" to a root commit. `git diff
+            # <empty>..<sha>` won't work; `git diff-tree --root` diffs the root
+            # commit against the empty tree and lists every path it introduced.
+            changes=$(git diff-tree --root --no-commit-id --name-only -r "$head_after" -- '*.yml' '*.yaml' | wc -l | tr -d ' ')
+          elif [[ -n "$head_before" && -n "$head_after" && "$head_before" != "$head_after" ]]; then
             changes=$(git diff --name-only "$head_before" "$head_after" -- '*.yml' '*.yaml' | wc -l | tr -d ' ')
           else
             changes=$(git diff --name-only -- '*.yml' '*.yaml' | wc -l | tr -d ' ')
