@@ -81,7 +81,7 @@ enough not to need an entry. Don't decide for them.
 
 ### Code review mindset — every change
 
-Treat every diff as if you're reviewing it for a PR with strict standards. Three lenses:
+Treat every diff as if you're reviewing it for a PR with strict standards. Four lenses:
 
 #### 1. Bugs
 
@@ -142,6 +142,45 @@ Every change must be evaluated against these:
 
 If you find a security issue while making an unrelated change, flag it to the user
 immediately. Don't silently fix and move on; the user wants to know.
+
+#### 4. Documentation surfaces
+
+The single most-flagged class of issue in our PR reviews is doc/code drift — prose
+that described a previous version of the implementation. Anything visible at a
+user-facing contract boundary lives in **multiple files**, and a code change that
+doesn't carry the matching prose along is incomplete. When you touch a CLI flag,
+an Action input/output, an exit code, or a behavior described in writing, walk
+every place the contract is named and update them in the same commit:
+
+- The implementation itself — `src/` for the CLI, the `run:` script in `action.yml`
+  for the Action.
+- The matching `description:` field in `action.yml` (`inputs:` / `outputs:`).
+- The matching row in **`README.md`** tables — Inputs, Outputs, Exit codes, Usage.
+- The matching paragraph(s) in **`docs/guide/`** — usually `use-as-action.md`,
+  `ci-integration.md`, `quickstart.md`, or `how-it-works.md`.
+- Any open **`.changeset/*.md`** entry that bundles this change.
+
+Before committing a contract-touching change, `grep -n` the identifier (flag name,
+input name, output name, behavior phrase) across the repo. If it's named in three
+files but updated in only one, you have doc drift in flight. CI will not catch
+this; the next reviewer will.
+
+This matters doubly when behavior evolves across several commits in one PR. The
+doc paragraph that was correct on commit N can drift wrong on commit N+3 even
+though nothing about the paragraph changed.
+
+Two anti-patterns from past sessions:
+
+- **Universal-sounding claims in scoped docs.** "All CLI behavior is unchanged"
+  reads as a promise about the entire release, not the rename it was actually
+  describing. Scope claims to their section: "The rename itself changes nothing
+  about ..." beats "Nothing has changed."
+- **Authoritative-sounding details that aren't verified.** Don't cite scopes
+  (`repo:read` — doesn't exist), commands (`git diff HEAD~1..HEAD` — wasn't what
+  the script did), or APIs without checking them. Either look it up, or hedge in
+  language that survives implementation drift ("a token with read access" beats a
+  wrong scope name). When you touch a code path, re-verify any prose elsewhere
+  that names the path's mechanics.
 
 ## Project conventions
 
@@ -303,6 +342,42 @@ Rules:
   `allowBuilds` entry for esbuild.
 - **Floating partial tags are pre-resolved.** `@v4` is functionally `latest v4.x.y`;
   don't flag within-major moves as outdated.
+- **`process.stdin.isTTY` is ambient.** Tests that depend on it pass under vitest
+  but fail under `pnpm test:watch` from a real terminal. Force `isTTY` explicitly
+  with `Object.defineProperty(process.stdin, 'isTTY', { configurable: true, value: <bool> })`
+  - a `try/finally` restore.
+- **Composite Action input defaults are literal strings.** `default: ${{ github.token }}`
+  is the literal string `${{ github.token }}`, not the token. Use empty default plus
+  an expression fallback in the `env:` block, evaluated at step time.
+- **`set -euo pipefail` + pipe + downstream tool that may exit non-zero.** A failing
+  CLI in `cli | tee out` kills the script before subsequent commands run. Wrap with
+  `set +e` → `cli | tee out` → `captured=${PIPESTATUS[0]}` → `set -e`, write outputs,
+  end with `exit "$captured"`.
+- **`jq` itself fails on empty/unparseable JSON.** `// 0` inside the filter doesn't
+  cover this — `jq` exits non-zero before the filter even runs. Combine `// 0` with
+  `2>/dev/null || echo 0` outside to stay robust under both modes.
+- **Fixed `$RUNNER_TEMP/<name>.json` collides under multi-use.** Two invocations of
+  the same composite action in one job overwrite each other's reports. Use
+  `mktemp "$RUNNER_TEMP/<name>.XXXXXXXX.json"` and surface the per-invocation path
+  as the output.
+- **`extra=($VAR)` enables pathname expansion in bash.** Globs in `$VAR` expand
+  against the workspace before reaching the next stage. Use `read -r -a extra <<<"$VAR"`
+  instead, then guard `(( ${#extra[@]} > 0 ))` because whitespace-only input parses
+  to a zero-length array and a bare `--flag` with no values silently eats the next
+  argument.
+- **Unborn-branch git operations.** A fresh repo with no commits has no `HEAD`;
+  `git rev-parse HEAD` returns empty. Code paths that diff "HEAD before" against
+  "HEAD after" need to fall back to `git diff-tree --root <after>` against the empty
+  tree when the "before" side is empty.
+- **`git diff -- '*.yml'` is repo-wide.** Pathspecs without a leading directory match
+  basenames across the whole tree, so unrelated yml/yaml files inflate counts. Scope
+  to the directory you actually care about: `git diff -- "$dir/*.yml" "$dir/*.yaml"`
+  matches direct children only.
+- **npm package specs accept more than semver.** `npm install foo@<spec>` parses
+  `<spec>` against a wide grammar — tarball URLs, git URLs, file paths, alias forms
+  (`npm:other-pkg@...`) — all of which override the package name and execute
+  arbitrary code. Validate any user-controlled `<spec>` against a tight allowlist
+  (e.g. `^[A-Za-z0-9][A-Za-z0-9._+-]*$`) before passing to `npx`.
 
 ## Useful commands
 
