@@ -11,4 +11,3 @@ Initial public release.
 - Auth chain: `GITHUB_TOKEN` → `GH_TOKEN` → `gh auth token` → anonymous
 - Configurable `--target` policy (latest, major, minor, patch, greatest)
 - JSON output for CI integration
-- 90%+ test coverage with strict TypeScript and ESLint
