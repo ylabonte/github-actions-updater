@@ -36,6 +36,12 @@ pnpm test           # or pnpm test:coverage when the change touches src/
 `pnpm format:check` is separate from `pnpm lint` and easy to forget when you've only
 edited markdown/docs. CI runs both — so do you.
 
+**If the change touched `src/cli.ts`** (flags, descriptions, defaults), also run
+`pnpm docs:gen-cli` to regenerate `docs/reference/cli.md`, and commit the
+regenerated file alongside the source change. CI doesn't gate on this regen, so a
+miss ships silently. Run `pnpm dev -- --help` as a final sanity-check on the prose
+the user actually sees.
+
 When tests or lint fail mid-task, fix and re-run; do not commit "WIP" or "skip CI"
 unless the user explicitly asks for it. A commit that fails CI wastes a full
 matrix run.
@@ -158,6 +164,19 @@ every place the contract is named and update them in the same commit:
 - The matching row in **`README.md`** tables — Inputs, Outputs, Exit codes, Usage.
 - The matching paragraph(s) in **`docs/guide/`** — usually `use-as-action.md`,
   `ci-integration.md`, `quickstart.md`, or `how-it-works.md`.
+- **The CLI's own self-documentation.** A change in `src/cli.ts` propagates into
+  three additional surfaces:
+  - **commander's `--help` output**, which the CLI emits at runtime.
+    Sanity-check with `pnpm dev -- --help` after any flag, description, or
+    default change — a stray typo here ships verbatim to every user.
+  - **`docs/reference/cli.md`**, auto-generated from commander via
+    `pnpm docs:gen-cli`. Regenerate after any change to `src/cli.ts`; commit
+    the regenerated file. CI doesn't check that the generated reference is
+    up-to-date, so a missed regen rides quietly into a release.
+  - **Runnable example snippets** in `README.md`'s "Usage" block and
+    `docs/guide/quickstart.md` (`ghau --target minor`, etc.). These drift
+    silently when flags rename or new ones appear; re-read them whenever
+    you touch the corresponding option.
 - Any open **`.changeset/*.md`** entry that bundles this change.
 
 Before committing a contract-touching change, `grep -n` the identifier (flag name,
