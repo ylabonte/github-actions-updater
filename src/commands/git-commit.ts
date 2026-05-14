@@ -12,6 +12,13 @@ const execFileAsync = promisify(execFile);
 export interface CommitOptions {
   readonly cwd?: string;
   /**
+   * When true, commit the prefilled template verbatim without opening an editor (drops
+   * `-e` from the git args). Auto-enabled when stdin is not a TTY, so CI flows work without
+   * setting `GIT_EDITOR`. Equivalent to `git commit --no-edit` semantically — name mirrors
+   * git's own flag for muscle memory.
+   */
+  readonly noEdit?: boolean;
+  /**
    * Override the `git commit` spawn for testing. Receives the args and cwd, returns the
    * exit code. Defaults to the real inherited-stdio spawn so the user's editor opens.
    * @internal
@@ -61,12 +68,16 @@ export async function commitUpdates(
     await writeFile(templatePath, template, 'utf8');
     await execFileAsync('git', ['add', '--', ...files], { cwd });
     const spawnFn = options.spawnCommit ?? spawnGitCommit;
-    // `-F <file>` seeds the message; `-e` forces the editor open for review; `-v` shows the
-    // staged diff alongside. Crucially this is NOT `-t` (template): with `-t`, git aborts
-    // if the buffer matches the seed text verbatim, which broke the common "accept the
-    // prefilled message" flow. With `-F -e` git commits whatever the user saves, including
-    // the unchanged seed.
-    const code = await spawnFn(['commit', '-v', '-e', '-F', templatePath], cwd);
+    // `-F <file>` seeds the message; `-v` shows the staged diff alongside. Including `-e`
+    // forces the editor open for interactive review — that's the right default in a TTY,
+    // but it makes CI runs unusable. We drop `-e` whenever the caller explicitly asks
+    // (`noEdit: true`) OR stdin is not a TTY (typical CI). Without `-e` git commits the
+    // seed file content verbatim, no editor invoked.
+    const useEditor = !options.noEdit && process.stdin.isTTY;
+    const commitArgs = useEditor
+      ? ['commit', '-v', '-e', '-F', templatePath]
+      : ['commit', '-v', '-F', templatePath];
+    const code = await spawnFn(commitArgs, cwd);
     if (code === 0) return { committed: true };
     return { committed: false, reason: `git commit exited with code ${code}` };
   } finally {

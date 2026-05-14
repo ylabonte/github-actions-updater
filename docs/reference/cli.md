@@ -28,6 +28,9 @@ Options:
   --commit                after --write or --interactive: stage the changed
                           workflow files and open `git commit -v` with a
                           pre-filled message (default: false)
+  --no-edit               with --commit: commit the prefilled message verbatim
+                          without opening an editor (auto-enabled when stdin is
+                          not a TTY)
   --fail-on-outdated      exit 1 when outdated entries are found (default: exit
                           0 unless an actual error occurred) (default: false)
   -v, --verbose           verbose logging (default: false)
