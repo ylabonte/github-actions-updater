@@ -8,9 +8,15 @@ branding:
 
 inputs:
   version:
-    description: 'npm tag or version of github-actions-updater to run via `npx`.'
+    # Pinned to the action's own major so that `uses: ylabonte/github-actions-updater@v1`
+    # cannot silently start running a future `2.x` CLI once that ships to npm. When we
+    # publish a major bump of the CLI, the matching action major (e.g. `v2` of this
+    # repo) updates this default to `2`. Callers who want to pin tighter (e.g.
+    # `1.2.3` for reproducible builds, `latest` to opt into floating across majors)
+    # can override the input explicitly.
+    description: 'npm tag or version of github-actions-updater to run via `npx`. Defaults to `1`, matching the action major; override to pin tighter or to float across majors.'
     required: false
-    default: latest
+    default: '1'
   target:
     description: 'Update target policy: latest, major, minor, patch, greatest.'
     required: false
@@ -125,7 +131,17 @@ runs:
         # same file. `mktemp` gives us a collision-free name without depending on
         # context-specific suffixes.
         report=$(mktemp "$RUNNER_TEMP/ghau.XXXXXXXX.json")
+
+        # Run the CLI under suspended `errexit` so a non-zero exit (notably
+        # `--fail-on-outdated`, or a partial-resolution exit 1) does NOT kill the
+        # script before we've written outputs. Downstream steps need access to
+        # `json`/`outdated`/`changes` even when the action itself ends up failing,
+        # e.g. to post a drift comment alongside a red check. We replay the
+        # captured exit code at the end of the script.
+        set +e
         npx -y "github-actions-updater@$GHAU_VERSION" "${args[@]}" | tee "$report"
+        cli_exit=${PIPESTATUS[0]}
+        set -e
 
         # `changes` = number of workflow files actually rewritten by this run.
         # Two derivation paths depending on what happened:
@@ -144,6 +160,11 @@ runs:
           fi
         fi
 
-        echo "json=$report"                                  >> "$GITHUB_OUTPUT"
-        echo "outdated=$(jq '.summary.outdated' "$report")"  >> "$GITHUB_OUTPUT"
-        echo "changes=$changes"                              >> "$GITHUB_OUTPUT"
+        # `// 0` keeps the output well-formed even if the CLI crashed before
+        # writing a valid JSON report; without it `jq` would print "null" and the
+        # output would be unusable in `if:` numeric comparisons downstream.
+        echo "json=$report"                                       >> "$GITHUB_OUTPUT"
+        echo "outdated=$(jq '.summary.outdated // 0' "$report")"  >> "$GITHUB_OUTPUT"
+        echo "changes=$changes"                                   >> "$GITHUB_OUTPUT"
+
+        exit "$cli_exit"
