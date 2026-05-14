@@ -90,6 +90,22 @@ runs:
       run: |
         set -euo pipefail
 
+        # Validate `version` against a tight allowlist BEFORE it ever reaches `npx`.
+        # The package spec `github-actions-updater@<version>` is parsed by npm, and
+        # npm accepts more than just semver/dist-tags here — tarball URLs
+        # (`https://...tgz`), git URLs (`git+https://...`), file paths
+        # (`file:./local`), and alias syntax (`npm:other-pkg@...`) all resolve to
+        # arbitrary code that overrides the package name. If a caller ever wires
+        # this input from attacker-controllable data (issue body, PR title, etc.),
+        # the action would happily execute that code. The allowlist below permits
+        # the legitimate forms (dist-tag like `latest`, exact `1.2.3`, partial
+        # `1.2`, prerelease `1.2.3-rc.1`, build-meta `1.2.3+sha.abc`) and refuses
+        # anything else.
+        if [[ ! "$GHAU_VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
+          echo "::error::Invalid 'version' input '${GHAU_VERSION}'. Expected a dist-tag (e.g. 'latest', '1') or a semver (e.g. '1.2.3', '1.2.3-rc.1'); refusing to pass it to npx."
+          exit 1
+        fi
+
         # Inputs reach the script through env vars set above (GHAU_*), never inline via
         # the template expression syntax, so action-name globs and similar attacker-
         # controllable values can't be shell-parsed. Each value is then pushed onto an
@@ -166,11 +182,16 @@ runs:
           fi
         fi
 
-        # `// 0` keeps the output well-formed even if the CLI crashed before
-        # writing a valid JSON report; without it `jq` would print "null" and the
-        # output would be unusable in `if:` numeric comparisons downstream.
-        echo "json=$report"                                       >> "$GITHUB_OUTPUT"
-        echo "outdated=$(jq '.summary.outdated // 0' "$report")"  >> "$GITHUB_OUTPUT"
+        # `jq` itself fails (and, under `set -e`, would abort the script before the
+        # final `exit "$cli_exit"`) if the report is empty or unparseable — which
+        # is exactly what happens when the CLI crashed before writing JSON. The
+        # `2>/dev/null || echo 0` swallows that failure so the output is always a
+        # usable integer and downstream `if:` numeric comparisons stay valid.
+        # `// 0` inside the filter then handles the case where the JSON parsed
+        # but the field is missing.
+        outdated=$(jq '.summary.outdated // 0' "$report" 2>/dev/null || echo 0)
+        echo "json=$report"          >> "$GITHUB_OUTPUT"
+        echo "outdated=$outdated"    >> "$GITHUB_OUTPUT"
         echo "changes=$changes"                                   >> "$GITHUB_OUTPUT"
 
         exit "$cli_exit"
