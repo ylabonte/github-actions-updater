@@ -132,10 +132,10 @@ describe('commitUpdates (no-op paths)', () => {
     });
 
     expect(result.committed).toBe(true);
-    expect(capturedArgs?.slice(0, 3)).toEqual(['commit', '-v', '-t']);
-    // The template file passed via -t lives under our tmpdir.
-    const templateArg = capturedArgs?.[3];
-    expect(templateArg?.includes('gau-commit-')).toBe(true);
+    expect(capturedArgs?.slice(0, 4)).toEqual(['commit', '-v', '-e', '-F']);
+    // The seed file passed via -F lives under our tmpdir.
+    const seedArg = capturedArgs?.[4];
+    expect(seedArg?.includes('gau-commit-')).toBe(true);
 
     // Staged file should appear in the index. Git emits POSIX-style paths on every platform,
     // so we normalize our expectation through path.relative + replace.

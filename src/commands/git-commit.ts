@@ -61,7 +61,12 @@ export async function commitUpdates(
     await writeFile(templatePath, template, 'utf8');
     await execFileAsync('git', ['add', '--', ...files], { cwd });
     const spawnFn = options.spawnCommit ?? spawnGitCommit;
-    const code = await spawnFn(['commit', '-v', '-t', templatePath], cwd);
+    // `-F <file>` seeds the message; `-e` forces the editor open for review; `-v` shows the
+    // staged diff alongside. Crucially this is NOT `-t` (template): with `-t`, git aborts
+    // if the buffer matches the seed text verbatim, which broke the common "accept the
+    // prefilled message" flow. With `-F -e` git commits whatever the user saves, including
+    // the unchanged seed.
+    const code = await spawnFn(['commit', '-v', '-e', '-F', templatePath], cwd);
     if (code === 0) return { committed: true };
     return { committed: false, reason: `git commit exited with code ${code}` };
   } finally {
