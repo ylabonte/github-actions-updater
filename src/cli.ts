@@ -43,6 +43,11 @@ export function buildProgram() {
       'after --write or --interactive: stage the changed workflow files and open `git commit -v` with a pre-filled message',
       false,
     )
+    .option(
+      '--fail-on-outdated',
+      'exit 1 when outdated entries are found (default: exit 0 unless an actual error occurred)',
+      false,
+    )
     .option('-v, --verbose', 'verbose logging', false);
 }
 
@@ -119,9 +124,11 @@ export async function main(argv: readonly string[]): Promise<number> {
 
     const hasError = resolutions.some((r) => r.error);
     const allError = resolutions.length > 0 && resolutions.every((r) => r.error);
+    // Default: exit 0 unless something errored. `--fail-on-outdated` brings back the
+    // "fail when stale" behavior for CI gating.
     if (allError) return 2;
-    if (resolutions.some((r) => r.outdated)) return 1;
     if (hasError) return 1;
+    if (opts.failOnOutdated && resolutions.some((r) => r.outdated)) return 1;
     return 0;
   } catch (error) {
     spinner?.fail();
