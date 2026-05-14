@@ -10,6 +10,8 @@ import { runPipeline } from './core/pipeline.js';
 
 import { applyUpdates } from './commands/update.js';
 import { runInteractive } from './commands/interactive.js';
+import { commitUpdates } from './commands/git-commit.js';
+import type { Resolution } from './core/types.js';
 import { renderTable } from './io/output/table.js';
 import { renderJson } from './io/output/json.js';
 
@@ -36,6 +38,11 @@ export function buildProgram() {
     .option('--no-color', 'disable color output')
     .option('--token <token>', 'GitHub token (overrides env / gh CLI)')
     .option('--allow-branch-pin', 'on --write, convert branch refs to pinned SHAs', false)
+    .option(
+      '--commit',
+      'after --write or --interactive: stage the changed workflow files and open `git commit -v` with a pre-filled message',
+      false,
+    )
     .option('-v, --verbose', 'verbose logging', false);
 }
 
@@ -72,10 +79,18 @@ export async function main(argv: readonly string[]): Promise<number> {
     });
     spinner?.stop();
 
+    if (opts.commit && !opts.write && !opts.interactive) {
+      process.stderr.write(pc.red('✖ --commit requires --write/-u or --interactive/-i.\n'));
+      return 2;
+    }
+
     if (opts.interactive) {
-      await runInteractive(resolutions, {
+      const applied = await runInteractive(resolutions, {
         ...(opts.allowBranchPin && { allowBranchPin: true }),
       });
+      if (opts.commit) {
+        await runCommit(applied);
+      }
       return 0;
     }
 
@@ -85,16 +100,19 @@ export async function main(argv: readonly string[]): Promise<number> {
     process.stdout.write(`${text}\n`);
 
     if (opts.write) {
-      const applied = await applyUpdates(resolutions, {
+      const outcome = await applyUpdates(resolutions, {
         ...(opts.allowBranchPin && { allowBranchPin: true }),
       });
-      const total = applied.reduce((acc, r) => acc + r.changes, 0);
+      const total = outcome.files.reduce((acc, r) => acc + r.changes, 0);
       if (!opts.json) {
         process.stdout.write(
           pc.green(
-            `\n✔ Wrote ${total} update${total === 1 ? '' : 's'} across ${applied.length} file${applied.length === 1 ? '' : 's'}.\n`,
+            `\n✔ Wrote ${total} update${total === 1 ? '' : 's'} across ${outcome.files.length} file${outcome.files.length === 1 ? '' : 's'}.\n`,
           ),
         );
+      }
+      if (opts.commit) {
+        await runCommit(outcome.applied);
       }
       return 0;
     }
@@ -110,6 +128,15 @@ export async function main(argv: readonly string[]): Promise<number> {
     process.stderr.write(pc.red(`✖ ${(error as Error).message}\n`));
     if (opts.verbose) process.stderr.write(`${(error as Error).stack ?? ''}\n`);
     return 2;
+  }
+}
+
+async function runCommit(applied: readonly Resolution[]): Promise<void> {
+  const result = await commitUpdates(applied);
+  if (result.committed) {
+    process.stdout.write(pc.green('\n✔ Committed.\n'));
+  } else if (result.reason) {
+    process.stderr.write(pc.yellow(`⚠ Skipped commit: ${result.reason}\n`));
   }
 }
 

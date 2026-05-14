@@ -47,14 +47,14 @@ export async function runInteractive(
     return [];
   }
 
-  const results = await applyUpdates(selected, options);
-  const totalChanges = results.reduce((acc, r) => acc + r.changes, 0);
+  const outcome = await applyUpdates(selected, options);
+  const totalChanges = outcome.files.reduce((acc, r) => acc + r.changes, 0);
   outro(
     pc.green(
-      `Applied ${totalChanges} update${totalChanges === 1 ? '' : 's'} across ${results.length} file${results.length === 1 ? '' : 's'}.`,
+      `Applied ${totalChanges} update${totalChanges === 1 ? '' : 's'} across ${outcome.files.length} file${outcome.files.length === 1 ? '' : 's'}.`,
     ),
   );
-  return selected;
+  return outcome.applied;
 }
 
 function displayLabel(r: Resolution, cwd: string): string {

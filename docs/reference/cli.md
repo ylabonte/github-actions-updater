@@ -25,6 +25,9 @@ Options:
   --token <token>         GitHub token (overrides env / gh CLI)
   --allow-branch-pin      on --write, convert branch refs to pinned SHAs
                           (default: false)
+  --commit                after --write or --interactive: stage the changed
+                          workflow files and open `git commit -v` with a
+                          pre-filled message (default: false)
   -v, --verbose           verbose logging (default: false)
   -h, --help              display help for command
 ```

@@ -53,6 +53,13 @@ gau --write
 
 `gau` rewrites the workflow files in place. SHA-pinned refs (`@<sha> # vX.Y.Z`) have both their SHA and trailing comment updated together. Formatting and comments are preserved exactly as they were.
 
+Add `--commit` to also stage the changes and open `git commit -v` with a pre-filled message:
+
+```bash
+gau -u --commit       # apply + open editor
+gau -i --commit       # pick + apply + open editor
+```
+
 ## Pick interactively
 
 ```bash
