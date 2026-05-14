@@ -1,6 +1,6 @@
 {
   "name": "github-actions-updater",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "ncu for GitHub Actions — scans .github/workflows for outdated remote uses: references and reports or updates them, with a polished colorful CLI.",
   "keywords": [
     "github-actions",
