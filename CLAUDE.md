@@ -20,17 +20,21 @@ the same rules every session.
 ## Workflow rules (non-negotiable)
 
 These came out of past sessions where things slipped through to CI. Follow them
-*every time*; they're cheap on the local machine and expensive when CI catches them.
+_every time_; they're cheap on the local machine and expensive when CI catches them.
 
 ### Before every commit
 
-Run **all three**, in this order, and fix anything red before committing:
+Run **all four**, in this order, and fix anything red before committing:
 
 ```bash
+pnpm format:check   # prettier — easy to miss because `pnpm lint` does NOT cover it
 pnpm lint
 pnpm typecheck
 pnpm test           # or pnpm test:coverage when the change touches src/
 ```
+
+`pnpm format:check` is separate from `pnpm lint` and easy to forget when you've only
+edited markdown/docs. CI runs both — so do you.
 
 When tests or lint fail mid-task, fix and re-run; do not commit "WIP" or "skip CI"
 unless the user explicitly asks for it. A commit that fails CI wastes a full
@@ -40,7 +44,7 @@ matrix run.
 
 For any work that's more than a one-line change:
 
-1. Call `TaskCreate` for each discrete step *before* you start coding.
+1. Call `TaskCreate` for each discrete step _before_ you start coding.
 2. Mark `in_progress` when you pick it up.
 3. Mark `completed` immediately when it's done — don't batch.
 4. If you discover work mid-task, create new tasks rather than silently expanding scope.
@@ -130,7 +134,7 @@ immediately. Don't silently fix and move on; the user wants to know.
   (floating minor).
 - SHA-pinned with version comment: `actions/checkout@<sha> # v4.1.1`. The comment is
   load-bearing — it's how we know the current version. Without it we surface an error,
-  we do *not* guess.
+  we do _not_ guess.
 - Branch: `actions/checkout@main`. Reported as `mutable`; rewriting only happens with
   `--allow-branch-pin`.
 - Docker: `docker://node:20`. Resolved via Docker Hub registry API.
@@ -143,11 +147,11 @@ immediately. Don't silently fix and move on; the user wants to know.
 
 ### CLI exit codes
 
-| Code | When |
-|------|------|
-| `0` | Scan ran. Outdated entries do **not** fail by default. |
-| `1` | A resolution errored (partial), or `--fail-on-outdated` was set and entries are outdated. |
-| `2` | Every resolution errored — usually auth or network. |
+| Code | When                                                                                      |
+| ---- | ----------------------------------------------------------------------------------------- |
+| `0`  | Scan ran. Outdated entries do **not** fail by default.                                    |
+| `1`  | A resolution errored (partial), or `--fail-on-outdated` was set and entries are outdated. |
+| `2`  | Every resolution errored — usually auth or network.                                       |
 
 The default-0 is deliberate — see the changeset for `--fail-on-outdated`. Don't revert.
 
@@ -178,7 +182,7 @@ The default-0 is deliberate — see the changeset for `--fail-on-outdated`. Don'
 - Logical, atomic commits. One concern per commit.
 - Conventional commit prefixes: `feat`, `fix`, `chore`, `docs`, `test`, `refactor`.
   Add `!` for breaking (`feat(cli)!:`).
-- Body explains *why*, not what — the diff already says what.
+- Body explains _why_, not what — the diff already says what.
 - Never `--no-verify`, never `--force` without explicit user authorization.
 
 ## Common pitfalls (we've hit these)

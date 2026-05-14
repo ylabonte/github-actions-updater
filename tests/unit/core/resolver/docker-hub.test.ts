@@ -23,9 +23,7 @@ describe('createDockerHubClient', () => {
   });
 
   it('prefixes single-segment images with library/', async () => {
-    const fetchMock = vi.fn(async (_url: string) =>
-      Response.json({ results: [], next: null }),
-    );
+    const fetchMock = vi.fn(async (_url: string) => Response.json({ results: [], next: null }));
     globalThis.fetch = fetchMock as unknown as typeof fetch;
     const client = createDockerHubClient();
     await client.listTags('alpine');
