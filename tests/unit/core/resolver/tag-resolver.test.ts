@@ -52,6 +52,71 @@ describe('resolveTag', () => {
     expect(r.outdated).toBe(false);
   });
 
+  it('major-partial ref is not outdated against same-major tags', async () => {
+    const client = fakeGitHubClient({
+      'actions/checkout': [
+        { name: 'v4.0.0', sha: 'a' },
+        { name: 'v4.1.0', sha: 'b' },
+        { name: 'v4.2.0', sha: 'c' },
+      ],
+    });
+    const r = await resolveTag(makeReference('actions/checkout@v4'), client, 'latest');
+    expect(r.outdated).toBe(false);
+    expect(r.level).toBe('none');
+  });
+
+  it('major-partial ref flags cross-major bump and renders in major form', async () => {
+    const client = fakeGitHubClient({
+      'actions/checkout': [
+        { name: 'v4.2.0', sha: 'a' },
+        { name: 'v5.0.0', sha: 'b' },
+        { name: 'v5.1.0', sha: 'c' },
+      ],
+    });
+    const r = await resolveTag(makeReference('actions/checkout@v4'), client, 'latest');
+    expect(r.outdated).toBe(true);
+    expect(r.level).toBe('major');
+    expect(r.latest).toBe('v5');
+  });
+
+  it('minor-partial ref is not outdated against same-minor tags', async () => {
+    const client = fakeGitHubClient({
+      'actions/checkout': [
+        { name: 'v4.1.0', sha: 'a' },
+        { name: 'v4.1.7', sha: 'b' },
+      ],
+    });
+    const r = await resolveTag(makeReference('actions/checkout@v4.1'), client, 'latest');
+    expect(r.outdated).toBe(false);
+  });
+
+  it('minor-partial ref renders bump as major.minor', async () => {
+    const client = fakeGitHubClient({
+      'actions/checkout': [
+        { name: 'v4.1.0', sha: 'a' },
+        { name: 'v4.2.0', sha: 'b' },
+      ],
+    });
+    const r = await resolveTag(makeReference('actions/checkout@v4.1'), client, 'latest');
+    expect(r.outdated).toBe(true);
+    expect(r.latest).toBe('v4.2');
+  });
+
+  it('handles current ref that does not parse as semver', async () => {
+    const client = fakeGitHubClient({
+      'someuser/branch-named-action': [{ name: 'v1.0.0', sha: 'a' }],
+    });
+    // `latest` is not a tag — parseTag returns null for it. The resolver should still find a
+    // semver candidate and report it; without a current tag to anchor on, no `v` is prepended.
+    const r = await resolveTag(
+      makeReference('someuser/branch-named-action@latest'),
+      client,
+      'latest',
+    );
+    expect(r.current).toBe('latest');
+    expect(r.latest).toBe('1.0.0');
+  });
+
   it('respects target=minor (no major bump)', async () => {
     const client = fakeGitHubClient({
       'actions/checkout': [

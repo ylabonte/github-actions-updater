@@ -41,3 +41,15 @@ export function parseTag(raw: string): ParsedTag | null {
 export function isStable(tag: ParsedTag): boolean {
   return tag.version.prerelease.length === 0;
 }
+
+export type TrackLevel = 'major' | 'minor' | 'exact';
+
+/**
+ * Determine what a parsed tag "tracks". Floating major tags like `@v4` are kept in sync by
+ * action authors via force-push — so they implicitly track `v4.*`. Same for `@v4.1` and
+ * `v4.1.*`. Exact tags (`v4.1.0`) track only themselves.
+ */
+export function trackLevel(tag: ParsedTag): TrackLevel {
+  if (!tag.partial) return 'exact';
+  return tag.raw.replace(/^v/i, '').includes('.') ? 'minor' : 'major';
+}

@@ -75,4 +75,26 @@ describe('classifyDiff', () => {
     expect(classifyDiff(null, parseTag('v1.0.0'))).toBe('none');
     expect(classifyDiff(parseTag('v1.0.0'), null)).toBe('none');
   });
+
+  // Partial-ref semantics: floating major/minor tags swallow within-track diffs.
+  it('major-partial current swallows within-major bumps', () => {
+    expect(classifyDiff(parseTag('v4'), parseTag('v4.2.0'))).toBe('none');
+    expect(classifyDiff(parseTag('v4'), parseTag('v4.0.1'))).toBe('none');
+  });
+
+  it('major-partial current still flags cross-major', () => {
+    expect(classifyDiff(parseTag('v4'), parseTag('v5.0.0'))).toBe('major');
+  });
+
+  it('minor-partial current swallows within-minor bumps', () => {
+    expect(classifyDiff(parseTag('v4.1'), parseTag('v4.1.7'))).toBe('none');
+  });
+
+  it('minor-partial current flags higher minors as minor', () => {
+    expect(classifyDiff(parseTag('v4.1'), parseTag('v4.2.0'))).toBe('minor');
+  });
+
+  it('minor-partial current flags higher majors as major', () => {
+    expect(classifyDiff(parseTag('v4.1'), parseTag('v5.0.0'))).toBe('major');
+  });
 });

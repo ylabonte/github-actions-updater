@@ -1,6 +1,6 @@
 import semver from 'semver';
 
-import { isStable, type ParsedTag } from '../utils/semver-tag.js';
+import { isStable, trackLevel, type ParsedTag } from '../utils/semver-tag.js';
 import type { Target, UpdateLevel } from './types.js';
 
 export interface Candidate {
@@ -64,17 +64,28 @@ function filterByTarget(current: ParsedTag | null, candidate: ParsedTag, target:
 }
 
 /**
- * Classify a version diff. Returns `'none'` when latest is null or equal/older than current.
+ * Classify a version diff between the user's current ref and a candidate latest.
  *
- * For tags resolved from partial refs (`v4` → `4.0.0`), the comparison still works because
- * semver comparison only cares about the normalized version. The display layer is responsible
- * for showing the original raw text.
+ * Partial refs (`@v4`, `@v4.1`) implicitly track a version prefix — action authors force-push
+ * the floating tag to keep it pointing at the latest within-track release. So `@v4` is
+ * functionally "latest v4.x.y" and shouldn't be reported as outdated when a higher v4.x.y
+ * appears. Only a cross-track move (`v4` → `v5`, or `v4.1` → `v4.2`) is a real bump.
+ *
+ * Returns `'none'` when latest is null, equal/older, or within the current's implicit track.
  */
 export function classifyDiff(current: ParsedTag | null, latest: ParsedTag | null): UpdateLevel {
   if (!current || !latest) return 'none';
   if (semver.lte(latest.version, current.version)) return 'none';
-  if (latest.version.major !== current.version.major) return 'major';
-  if (latest.version.minor !== current.version.minor) return 'minor';
+
+  const track = trackLevel(current);
+  const sameMajor = latest.version.major === current.version.major;
+  const sameMinor = sameMajor && latest.version.minor === current.version.minor;
+
+  if (track === 'major' && sameMajor) return 'none';
+  if (track === 'minor' && sameMinor) return 'none';
+
+  if (!sameMajor) return 'major';
+  if (!sameMinor) return 'minor';
   if (latest.version.patch !== current.version.patch) return 'patch';
   return 'none';
 }

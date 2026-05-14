@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isStable, parseTag } from '../../../src/utils/semver-tag.js';
+import { isStable, parseTag, trackLevel } from '../../../src/utils/semver-tag.js';
 
 describe('parseTag', () => {
   it('parses full semver with v-prefix', () => {
@@ -49,5 +49,22 @@ describe('isStable', () => {
   it('returns false for prereleases', () => {
     const t = parseTag('v1.2.3-rc.1')!;
     expect(isStable(t)).toBe(false);
+  });
+});
+
+describe('trackLevel', () => {
+  it('returns major for major-only partial', () => {
+    expect(trackLevel(parseTag('v4')!)).toBe('major');
+    expect(trackLevel(parseTag('4')!)).toBe('major');
+  });
+
+  it('returns minor for major.minor partial', () => {
+    expect(trackLevel(parseTag('v4.1')!)).toBe('minor');
+    expect(trackLevel(parseTag('4.1')!)).toBe('minor');
+  });
+
+  it('returns exact for full semver', () => {
+    expect(trackLevel(parseTag('v4.1.2')!)).toBe('exact');
+    expect(trackLevel(parseTag('1.2.3-rc.1')!)).toBe('exact');
   });
 });
