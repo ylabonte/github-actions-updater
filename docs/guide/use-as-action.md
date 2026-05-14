@@ -12,10 +12,10 @@ The Action runs `npx github-actions-updater@<version>` under the hood — same c
 
 The complete tables live in the [README](https://github.com/ylabonte/github-actions-updater#use-as-a-github-action). Highlights worth flagging here:
 
-- **`version`** defaults to `latest`. Pin to a specific release (`version: '1.2.3'`) for reproducibility, or stick with the floating `@v1` tag for "latest in v1.x.y".
+- **`version`** defaults to `1` — the same major as the action ref (`@v1`). That keeps the action ref and the underlying CLI major aligned so `uses: …@v1` can never silently jump to a future `2.x` CLI. Override the input to pin tighter (`version: '1.2.3'`) for fully reproducible builds, or set it to `latest` to opt into floating across majors.
 - **`commit: true`** implies `--no-edit` — no editor is invoked, the action commits the prefilled message verbatim. Without `commit`, the workflow files are left modified for the next step to handle.
 - **`fail-on-outdated: true`** turns the action into a CI gate. Without it the action always exits 0 on a successful scan, even if there's drift.
-- **`github-token`** defaults to the workflow's auto-provided `github.token`. That's enough for public-repo scans; private repos may need a PAT with `repo:read`.
+- **`github-token`** defaults to the workflow's auto-provided `github.token`. That's enough for public-repo scans. For private repos, supply a token with read access to the repository: a classic PAT with the `repo` scope, or a fine-grained PAT with the **Contents: Read** permission on the target repo. The token never leaves the in-memory Octokit instance — see `src/core/auth.ts`.
 - **`changes` output** is the number of workflow files actually rewritten by the run, not the scan-time outdated count. Derived from `git diff HEAD~1..HEAD` when `commit: true` (the commit's file list) or from `git diff` against the index when `write: true` without `--commit` (the working-tree changes). Always `0` when `write: false` or when the workflow isn't running inside a git repository. Safe to gate downstream steps on, e.g. `if: steps.ghau.outputs.changes > 0`.
 
 ## Recipes
