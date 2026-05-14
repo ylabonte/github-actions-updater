@@ -122,30 +122,37 @@ describe('commitUpdates (no-op paths)', () => {
       outdated: true,
     };
 
-    // Test runs under vitest with stdin piped — process.stdin.isTTY is not `true`, so the
-    // commit goes through the non-interactive path and `-e` is omitted.
-    let capturedArgs: readonly string[] | undefined;
-    const result = await commitUpdates([resolution], {
-      cwd,
-      spawnCommit: async (args) => {
-        capturedArgs = args;
-        return 0;
-      },
-    });
+    // Force the non-TTY branch explicitly. Vitest normally inherits a non-TTY stdin, but
+    // a developer running `pnpm test` from a terminal that hands its TTY to subprocesses
+    // would otherwise see `-e` in the args and a spurious failure.
+    const originalIsTTY = process.stdin.isTTY;
+    Object.defineProperty(process.stdin, 'isTTY', { configurable: true, value: false });
+    try {
+      let capturedArgs: readonly string[] | undefined;
+      const result = await commitUpdates([resolution], {
+        cwd,
+        spawnCommit: async (args) => {
+          capturedArgs = args;
+          return 0;
+        },
+      });
 
-    expect(result.committed).toBe(true);
-    expect(capturedArgs?.slice(0, 3)).toEqual(['commit', '-v', '-F']);
-    expect(capturedArgs).not.toContain('-e');
-    const seedArg = capturedArgs?.[3];
-    expect(seedArg?.includes('ghau-commit-')).toBe(true);
+      expect(result.committed).toBe(true);
+      expect(capturedArgs?.slice(0, 3)).toEqual(['commit', '-v', '-F']);
+      expect(capturedArgs).not.toContain('-e');
+      const seedArg = capturedArgs?.[3];
+      expect(seedArg?.includes('ghau-commit-')).toBe(true);
 
-    // Staged file should appear in the index. Git emits POSIX-style paths on every platform,
-    // so we normalize our expectation through path.relative + replace.
-    const { stdout: staged } = await run('git', ['diff', '--cached', '--name-only', '--', file], {
-      cwd,
-    });
-    const expected = path.relative(cwd, file).split(path.sep).join('/');
-    expect(staged.trim()).toBe(expected);
+      // Staged file should appear in the index. Git emits POSIX-style paths on every platform,
+      // so we normalize our expectation through path.relative + replace.
+      const { stdout: staged } = await run('git', ['diff', '--cached', '--name-only', '--', file], {
+        cwd,
+      });
+      const expected = path.relative(cwd, file).split(path.sep).join('/');
+      expect(staged.trim()).toBe(expected);
+    } finally {
+      Object.defineProperty(process.stdin, 'isTTY', { configurable: true, value: originalIsTTY });
+    }
   });
 
   it('omits `-e` when noEdit is explicitly set, even in a TTY', async () => {

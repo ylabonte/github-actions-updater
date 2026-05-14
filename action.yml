@@ -118,7 +118,13 @@ runs:
           head_before=$(git rev-parse HEAD 2>/dev/null || true)
         fi
 
-        report="$RUNNER_TEMP/ghau.json"
+        # Unique per-invocation report path. If the action is used multiple times in
+        # one job (the monorepo recipe in docs/guide/use-as-action.md does exactly
+        # this), a fixed name like `$RUNNER_TEMP/ghau.json` would have later runs
+        # overwrite earlier ones and both steps' `json` outputs would point at the
+        # same file. `mktemp` gives us a collision-free name without depending on
+        # context-specific suffixes.
+        report=$(mktemp "$RUNNER_TEMP/ghau.XXXXXXXX.json")
         npx -y "github-actions-updater@$GHAU_VERSION" "${args[@]}" | tee "$report"
 
         # `changes` = number of workflow files actually rewritten by this run.
