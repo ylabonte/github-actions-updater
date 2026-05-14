@@ -68,7 +68,7 @@ jobs:
           set -euo pipefail
           test -n "$OUTDATED" || { echo "::error::outdated output is empty"; exit 1; }
           test -f "$JSON_PATH" || { echo "::error::json output path missing"; exit 1; }
-          jq -e '.entries[] | select(.action == "actions/checkout")' "$JSON_PATH" \
+          jq -e '.entries[] | select(.action == "actions/checkout")' "$JSON_PATH" 2>/dev/null \
             || { echo "::error::expected actions/checkout entry in JSON output"; cat "$JSON_PATH"; exit 1; }
           echo "✓ self-test passed — outdated=$OUTDATED"
 

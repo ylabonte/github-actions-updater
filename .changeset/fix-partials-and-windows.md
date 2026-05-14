@@ -1,5 +1,5 @@
 ---
-'github-actions-updater': patch
+'github-actions-updater': minor
 ---
 
 Fix floating-tag false positives and Windows CI.
