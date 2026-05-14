@@ -32,4 +32,4 @@ jobs:
           node dist/cli.js --json > ghau.json
           code=$?
           cat ghau.json
-          if [ "$code" -eq 2 ]; then exit 1; fi
+          if [ "$code" -ne 0 ]; then exit "$code"; fi
