@@ -15,6 +15,7 @@ Vitest, linted with ESLint strict-type-checked + unicorn, formatted with Prettie
 2. **Track work in tasks.** Anything bigger than a one-line tweak: create discrete tasks, mark them `in_progress`/`completed` as you go. Don't batch.
 3. **Changesets — interactively.** Before adding or modifying a `.changeset/*.md` entry, ask the user: add to existing, new file, or skip?
 4. **Atomic commits.** Conventional prefixes (`feat`, `fix`, `chore`, `docs`, `test`, `refactor`; `!` for breaking). Body explains _why_.
+5. **Confirm every `git commit` / `git push`.** Even in autonomous modes, pause for the user. The Claude-side rule lives in `.claude/settings.local.json` (`permissions.ask`); the Copilot-equivalent is to surface the command and wait for explicit OK before running.
 
 ## Code review lenses — apply to every change
 

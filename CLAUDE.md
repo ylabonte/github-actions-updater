@@ -185,6 +185,27 @@ The default-0 is deliberate — see the changeset for `--fail-on-outdated`. Don'
 - Body explains _why_, not what — the diff already says what.
 - Never `--no-verify`, never `--force` without explicit user authorization.
 
+### Confirm before commits and pushes — always
+
+Even in auto/yolo mode, `git commit` and `git push` are gated. The enforcement lives
+in `.claude/settings.local.json` under `permissions.ask`:
+
+```json
+{
+  "permissions": {
+    "ask": ["Bash(git commit:*)", "Bash(git push:*)", "Bash(git push)"]
+  }
+}
+```
+
+The file is **not committed** (ignored via `.gitignore`); each contributor maintains
+their own copy. The rule means Claude Code prompts the user before running either
+command, regardless of autonomy level. Don't try to bypass it — the prompt is the
+user's last sanity check, and it costs almost nothing to wait for.
+
+If you want to commit several things in rapid succession, batch the diff into one
+logical commit rather than spamming approvals.
+
 ## Common pitfalls (we've hit these)
 
 - **Machine-dependent snapshots.** Always pin `cwd` in renderer tests.
