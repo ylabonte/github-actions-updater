@@ -19,9 +19,21 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm-publish
     steps:
+      - uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+      # Pass the App token to checkout so the credential persisted into git
+      # config is the App's, not the default GITHUB_TOKEN. `git push` from
+      # changesets/action (and from later steps in this job) is then
+      # App-authored, which triggers downstream workflows. Setting env
+      # GITHUB_TOKEN alone is not enough — checkout's persisted credential is
+      # what `git push` actually uses.
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
@@ -32,11 +44,6 @@ jobs:
       - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
-      - uses: actions/create-github-app-token@v1
-        id: app-token
-        with:
-          app-id: ${{ secrets.RELEASE_APP_ID }}
-          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
       - name: Create release PR or publish
         id: changesets
         uses: changesets/action@v1
