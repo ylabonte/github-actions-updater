@@ -1,12 +1,13 @@
 # github-actions-updater
 
-> `ncu` for GitHub Actions — scan `.github/workflows/` for outdated remote `uses:` references and (optionally) apply the updates, with a polished colorful CLI.
+> `ncu` for GitHub Actions — scan `.github/workflows/` for outdated `uses:` references and (optionally) apply the updates.
 
 [![CI](https://github.com/yannic/github-actions-updater/actions/workflows/ci.yml/badge.svg)](https://github.com/yannic/github-actions-updater/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/github-actions-updater.svg)](https://www.npmjs.com/package/github-actions-updater)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
-```
+```shell
+$ gau
 ┌──────────────────────────┬────────────────────┬─────────┬────────┬───────┐
 │ Workflow                 │ Action             │ Current │ Latest │ Δ     │
 ├──────────────────────────┼────────────────────┼─────────┼────────┼───────┤
@@ -89,3 +90,9 @@ Issues and PRs welcome. Run `pnpm changeset` when adding user-visible changes; t
 ## License
 
 [MIT](./LICENSE)
+
+---
+
+If `gau` saved you some time, a coffee is always appreciated — entirely optional, never expected.
+
+<a href="https://www.buymeacoffee.com/ylabonte"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="40" width="144"></a>
