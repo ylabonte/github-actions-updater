@@ -21,8 +21,8 @@ jobs:
 
       # Lay down a temp workspace whose layout matches what `uses: ./` will scan when
       # invoked from the action's repo. We point the action at a per-job `.github/workflows/`
-      # directory full of fixtures, then assert the JSON output mentions the expected actions
-      # without depending on what's actually outdated upstream.
+      # directory full of fixtures, then assert the JSON output mentions the expected
+      # actions without depending on what's actually outdated upstream.
       - name: Prepare fixture workflow
         run: |
           set -euo pipefail
@@ -37,16 +37,30 @@ jobs:
                 - uses: actions/setup-node@v3.8.2
           EOF
 
-      # NOTE: we deliberately do NOT pass `version:` here so the action runs against the
-      # latest published npm version. To test an unreleased local build, switch to a
-      # `pack + file:` install (out of scope for the first iteration of this workflow).
+      # The action delegates to `npx github-actions-updater@<version>`, which requires
+      # the package to exist on the npm registry. Before the first 1.0.0 publish there's
+      # nothing for npm to fetch, so the run step would 404. We probe the registry and
+      # skip the actual invocation in that pre-publish window — the workflow stays
+      # green and self-engages automatically the moment 1.0.0 lands on npm.
+      - name: Probe npm registry
+        id: published
+        run: |
+          set -euo pipefail
+          if npm view github-actions-updater version --silent >/dev/null 2>&1; then
+            echo "yes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "yes=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run the action
         id: ghau
+        if: steps.published.outputs.yes == 'true'
         uses: ./
         with:
           workflows: ${{ github.workspace }}/.selftest/.github/workflows
 
       - name: Assert outputs are present and well-formed
+        if: steps.published.outputs.yes == 'true'
         env:
           OUTDATED: ${{ steps.ghau.outputs.outdated }}
           JSON_PATH: ${{ steps.ghau.outputs.json }}
@@ -57,3 +71,8 @@ jobs:
           jq -e '.entries[] | select(.action == "actions/checkout")' "$JSON_PATH" \
             || { echo "::error::expected actions/checkout entry in JSON output"; cat "$JSON_PATH"; exit 1; }
           echo "✓ self-test passed — outdated=$OUTDATED"
+
+      - name: Skip notice (pre-publish)
+        if: steps.published.outputs.yes == 'false'
+        run: |
+          echo "::warning::Action self-test skipped: github-actions-updater is not yet on npm. The workflow will start exercising the action automatically once 1.0.0 publishes."
