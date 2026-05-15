@@ -85,7 +85,7 @@ If you keep typing the same flags (`--target minor`, `--reject docker://**`, etc
 }
 ```
 
-`ghau` picks it up automatically. CLI flags still win when you pass them explicitly. See the [config-file guide](./config-file) for the full schema and other supported shapes (`ghau.config.mjs` with typed `defineConfig`, a `ghau` key in `package.json`, etc.).
+`ghau` picks it up automatically. CLI flags still win when you pass them explicitly. See the [config-file guide](./config-file) for the full schema and other supported shapes (`.ghaurc.yaml`, a `ghau` key in `package.json`, etc.).
 
 ## Authentication
 

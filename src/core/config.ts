@@ -1,19 +1,27 @@
 /**
  * Config file loading via cosmiconfig.
  *
- * Supported locations:
+ * Supported locations (data-only):
  *
  * - `package.json` `"ghau"` field
- * - `.ghaurc`, `.ghaurc.json`, `.ghaurc.yaml`, `.ghaurc.yml`
- * - `.ghaurc.js`, `.ghaurc.cjs`, `.ghaurc.mjs`
- * - `ghau.config.js`, `ghau.config.cjs`, `ghau.config.mjs`
+ * - `.ghaurc` (JSON or YAML auto-detected by cosmiconfig)
+ * - `.ghaurc.json`
+ * - `.ghaurc.yaml`
+ * - `.ghaurc.yml`
  * - `ghau.config.json`
  *
- * `.ts` is intentionally **not** in this list. cosmiconfig 9 doesn't ship a
- * TypeScript loader; adding one would require a runtime transpilation dep
- * (jiti/typescript-loader/etc.) for a use case the `.mjs` path already serves
- * adequately for typed configs via `defineConfig`. Revisit if there's
- * demand.
+ * **Executable formats (`.js`, `.cjs`, `.mjs`, `.ts`) are intentionally NOT
+ * supported.** Allowing them would mean `ghau` runs repository-controlled
+ * JavaScript during config discovery. In the composite Action path,
+ * `GITHUB_TOKEN` is already in the process environment by the time the CLI
+ * starts, so a checked-in `ghau.config.mjs` from an attacker-controlled PR
+ * could read or exfiltrate it — even though `token` is not part of the
+ * config schema. Keeping the config surface data-only eliminates that vector.
+ *
+ * Users who need typed/dynamic configs in v1.1.0 should generate JSON at
+ * build time. A future minor may add an explicit opt-in for executable
+ * formats with appropriate CI safeguards; track [issue link] if you have a
+ * use case.
  *
  * Schema validation rejects unknown keys and bad shapes with a single `Error`
  * message that lists every offending field. CLI flags override config values;
@@ -21,8 +29,12 @@
  * site in `src/cli.ts`.
  */
 
+import path from 'node:path';
+
 import { cosmiconfig } from 'cosmiconfig';
 import { z } from 'zod';
+
+import { toPosixPath } from '../utils/paths.js';
 
 const TARGETS = ['latest', 'major', 'minor', 'patch', 'greatest'] as const;
 
@@ -51,6 +63,11 @@ export interface LoadedConfig {
  *
  * Throws a single, formatted `Error` when a config was found but failed schema
  * validation, so the CLI can surface a clean message to the user.
+ *
+ * Relative `workflowsDir` values are resolved against the directory of the
+ * config file itself (not `process.cwd()`), so a repo-level config in
+ * `repo/.ghaurc.json` keeps pointing at `repo/.github/workflows` regardless
+ * of where the CLI was invoked.
  */
 export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
   const explorer = cosmiconfig('ghau', {
@@ -60,14 +77,16 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
       '.ghaurc.json',
       '.ghaurc.yaml',
       '.ghaurc.yml',
-      '.ghaurc.js',
-      '.ghaurc.cjs',
-      '.ghaurc.mjs',
-      'ghau.config.js',
-      'ghau.config.cjs',
-      'ghau.config.mjs',
       'ghau.config.json',
     ],
+    // Walk all the way to the filesystem root rather than stopping at the
+    // default (which in cosmiconfig 9 is the user's home directory). This
+    // makes the search find a repo-level `.ghaurc.json` even when the CLI
+    // is invoked from a subdirectory whose path is outside the home tree
+    // (e.g. a CI runner's `/var/.../runner/work/...` or a tmpdir path in
+    // tests). The directory walk is bounded by filesystem depth and is
+    // negligible cost in practice.
+    stopDir: '/',
   });
 
   const result = await explorer.search(cwd);
@@ -77,28 +96,22 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
   if (!parsed.success) {
     const issues = parsed.error.issues
       .map((issue) => {
-        const path = issue.path.length === 0 ? '<root>' : issue.path.join('.');
-        return `  ${path}: ${issue.message}`;
+        const issuePath = issue.path.length === 0 ? '<root>' : issue.path.join('.');
+        return `  ${issuePath}: ${issue.message}`;
       })
       .join('\n');
-    throw new Error(`Invalid ghau config in ${result.filepath}:\n${issues}`);
+    throw new Error(`Invalid ghau config in ${toPosixPath(result.filepath)}:\n${issues}`);
   }
 
-  return { config: parsed.data, filepath: result.filepath };
-}
+  // Resolve a relative `workflowsDir` against the config file's directory.
+  // Without this, `ghau` invoked from `repo/packages/app` with a repo-level
+  // `.ghaurc.json` containing `workflowsDir: ".github/workflows"` would scan
+  // `repo/packages/app/.github/workflows`, not `repo/.github/workflows`.
+  const config: GhauConfig = parsed.data;
+  if (config.workflowsDir !== undefined && !path.isAbsolute(config.workflowsDir)) {
+    const configDir = path.dirname(result.filepath);
+    config.workflowsDir = path.resolve(configDir, config.workflowsDir);
+  }
 
-/**
- * Identity helper for TS users authoring `ghau.config.ts` with type-safety:
- *
- * ```ts
- * import { defineConfig } from 'github-actions-updater';
- *
- * export default defineConfig({
- *   target: 'minor',
- *   rejects: ['docker://**'],
- * });
- * ```
- */
-export function defineConfig(config: GhauConfig): GhauConfig {
-  return config;
+  return { config, filepath: result.filepath };
 }

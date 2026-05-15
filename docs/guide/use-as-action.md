@@ -19,6 +19,10 @@ The complete tables live in the [README](https://github.com/ylabonte/github-acti
 - **`github-token`** defaults to the workflow's auto-provided `github.token`. That's enough for public-repo scans. For private repos, supply a token with read access to the repository: a classic PAT with the `repo` scope, or a fine-grained PAT with the **Contents: Read** permission on the target repo. The token never leaves the in-memory Octokit instance — see `src/core/auth.ts`.
 - **`changes` output** is the number of workflow files actually rewritten by the run, not the scan-time outdated count. The pathspec is scoped to the configured workflows directory (the `workflows` input, defaulting to `.github/workflows`), so unrelated YAML edits elsewhere in the repo never inflate the count. Derivation: when `commit: true`, the action captures `HEAD` before invoking the CLI and diffs `HEAD_BEFORE..HEAD_AFTER` for the just-created commit's file list — or, on a previously unborn branch where the commit is the root commit, falls back to `git diff-tree --root` against the empty tree. When `write: true` without `--commit`, the diff is taken against the working tree instead. Always `0` when `write: false` or when the workflow isn't running inside a git repository. Safe to gate downstream steps on, e.g. `if: steps.ghau.outputs.changes > 0`.
 
+  ::: warning Limitation: `changes` when `workflowsDir` lives in a config file
+  The `changes` diff is scoped using the `workflows` input only — not by reading the effective `workflowsDir` from a `.ghaurc` config. If your config file sets `workflowsDir` to something other than `.github/workflows` and you don't pass the same path as `with: workflows: ...` on the Action, files rewritten outside `.github/workflows` won't be counted and `changes` will under-report (often to `0`). Pass the path explicitly on the Action when you rely on `changes` for gating, or check the always-accurate `outdated` output instead. Closing this gap properly is on the v1.2 roadmap.
+  :::
+
 ## Recipes
 
 ### 1. Auto-PR weekly (canonical)

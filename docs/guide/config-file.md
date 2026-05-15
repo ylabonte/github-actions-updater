@@ -2,36 +2,35 @@
 
 `ghau` discovers a config file at startup via
 [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig) — search starts in the
-current working directory and walks upward. CLI flags override config-file
-values; config-file values override hardcoded defaults.
+current working directory and walks up to the filesystem root. CLI flags
+override config-file values; config-file values override hardcoded defaults.
 
 ## Where it looks
 
 In order of precedence within the same directory:
 
 - A `ghau` key in `package.json`
-- `.ghaurc`
+- `.ghaurc` (JSON or YAML, auto-detected)
 - `.ghaurc.json`
 - `.ghaurc.yaml`
 - `.ghaurc.yml`
-- `.ghaurc.js`
-- `.ghaurc.cjs`
-- `.ghaurc.mjs`
-- `ghau.config.js`
-- `ghau.config.cjs`
-- `ghau.config.mjs`
 - `ghau.config.json`
 
 If no config file is found, `ghau` runs with built-in defaults — the same as
 before config-file support landed.
 
-::: info Why no `.ts`?
-cosmiconfig v9 (what we use) doesn't ship a TypeScript loader; adding one
-would require a runtime transpilation dependency (`jiti` or
-`cosmiconfig-typescript-loader`). For type-safety, write your config as
-`ghau.config.mjs` and use `defineConfig` — TypeScript-aware editors will
-infer types via JSDoc/`@ts-check` against the package's exported types.
-If there's demand for native `.ts` support, file an issue.
+::: warning Data-only by design
+Executable config formats (`.js`, `.cjs`, `.mjs`, `.ts`) are intentionally
+**not supported**. Allowing them would mean `ghau` runs
+repository-controlled JavaScript during config discovery. In the composite
+Action path, `GITHUB_TOKEN` is already in the process environment by the
+time the CLI starts, so a checked-in `ghau.config.mjs` from an
+attacker-controlled PR could read or exfiltrate it — even though `token`
+is not part of the config schema. Keeping the config surface data-only
+eliminates that vector at the cost of dynamic configs; if you need a
+dynamic config, generate JSON at build time. An explicit opt-in for
+executable formats may land in a future minor with appropriate CI
+safeguards.
 :::
 
 ## Schema
@@ -57,6 +56,22 @@ Unknown keys are rejected with a clear error pointing at the file and the
 offending field. `ghau` exits `2` when a config is present but malformed —
 the same exit code used for fatal scan errors.
 
+## Relative paths
+
+A relative `workflowsDir` is resolved against the **config file's
+directory**, not against `process.cwd()`. So a repo-level
+`.ghaurc.json` containing:
+
+```json
+{ "workflowsDir": ".github/workflows" }
+```
+
+…always points at `<repo-root>/.github/workflows`, regardless of which
+subdirectory inside the repo you invoke `ghau` from.
+
+CLI-provided `--workflows` paths stay `process.cwd()`-relative (that's the
+standard CLI behavior).
+
 ## Examples
 
 ### Repo-level defaults via `.ghaurc.json`
@@ -68,21 +83,13 @@ the same exit code used for fatal scan errors.
 }
 ```
 
-### Typed config via `ghau.config.mjs`
+### YAML via `.ghaurc.yaml`
 
-The package exports a `defineConfig` helper that gives editor hints in
-TypeScript-aware setups (including JS-with-`@ts-check`):
-
-`ghau.config.mjs`:
-
-```js
-import { defineConfig } from 'github-actions-updater';
-
-export default defineConfig({
-  target: 'minor',
-  rejects: ['actions/cache', 'docker://**'],
-  failOnOutdated: true,
-});
+```yaml
+target: minor
+rejects:
+  - docker://**
+failOnOutdated: true
 ```
 
 ### Embedded in `package.json`
