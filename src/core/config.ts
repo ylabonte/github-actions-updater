@@ -34,9 +34,8 @@ import path from 'node:path';
 import { cosmiconfig } from 'cosmiconfig';
 import { z } from 'zod';
 
+import { TARGETS } from './types.js';
 import { toPosixPath } from '../utils/paths.js';
-
-const TARGETS = ['latest', 'major', 'minor', 'patch', 'greatest'] as const;
 
 export const GhauConfigSchema = z
   .object({

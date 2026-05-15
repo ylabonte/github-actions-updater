@@ -18,13 +18,11 @@ import { confirm, isCancel } from '@clack/prompts';
 import { applyUpdates } from './commands/update.js';
 import { runInteractive } from './commands/interactive.js';
 import { commitUpdates } from './commands/git-commit.js';
-import type { Resolution } from './core/types.js';
+import { TARGETS, type Resolution } from './core/types.js';
 import { renderTable } from './io/output/table.js';
 import { renderJson } from './io/output/json.js';
 
 const VERSION = '0.0.0';
-
-const TARGETS = ['latest', 'major', 'minor', 'patch', 'greatest'] as const;
 
 export function buildProgram() {
   return new Command()

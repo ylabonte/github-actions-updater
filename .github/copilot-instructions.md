@@ -1,7 +1,9 @@
 # GitHub Copilot instructions for github-actions-updater
 
-Mirror of `CLAUDE.md` for Copilot — same rules, condensed. Keep this file in sync
-when the workflow rules in `CLAUDE.md` change.
+Condensed restatement of `CLAUDE.md`'s rules for GitHub Copilot. `CLAUDE.md`
+is the canonical source; this file derives from it and is the _only_ Copilot
+guidance in the repo. Keep this file in sync whenever the workflow rules in
+`CLAUDE.md` change.
 
 ## What this project is
 
