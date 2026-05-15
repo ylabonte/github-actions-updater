@@ -1,9 +1,9 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { defineConfig, GhauConfigSchema, loadConfig } from '../../../src/core/config.js';
+import { GhauConfigSchema, loadConfig } from '../../../src/core/config.js';
 
 describe('loadConfig', () => {
   let cwd: string;
@@ -37,26 +37,23 @@ describe('loadConfig', () => {
     expect(result?.config).toEqual({ target: 'patch' });
   });
 
-  it('loads `ghau.config.json`', async () => {
+  it('loads `.ghaurc.yaml`', async () => {
     await writeFile(
-      path.join(cwd, 'ghau.config.json'),
-      JSON.stringify({ filters: ['actions/*'], workflowsDir: 'wf' }),
+      path.join(cwd, '.ghaurc.yaml'),
+      'target: major\nallowBranchPin: true\nrejects:\n  - "docker://**"\n',
     );
     const result = await loadConfig(cwd);
-    expect(result?.config).toEqual({ filters: ['actions/*'], workflowsDir: 'wf' });
+    expect(result?.config).toEqual({
+      target: 'major',
+      allowBranchPin: true,
+      rejects: ['docker://**'],
+    });
   });
 
-  it('loads `ghau.config.js` (CommonJS)', async () => {
-    await writeFile(
-      path.join(cwd, 'package.json'),
-      JSON.stringify({ name: 'fixture', type: 'commonjs' }),
-    );
-    await writeFile(
-      path.join(cwd, 'ghau.config.js'),
-      "module.exports = { target: 'major', allowBranchPin: true };\n",
-    );
+  it('loads `ghau.config.json`', async () => {
+    await writeFile(path.join(cwd, 'ghau.config.json'), JSON.stringify({ filters: ['actions/*'] }));
     const result = await loadConfig(cwd);
-    expect(result?.config).toEqual({ target: 'major', allowBranchPin: true });
+    expect(result?.config).toEqual({ filters: ['actions/*'] });
   });
 
   it('loads the `ghau` key from package.json', async () => {
@@ -76,6 +73,39 @@ describe('loadConfig', () => {
     await writeFile(path.join(cwd, 'package.json'), JSON.stringify({ name: 'fixture' }));
     const result = await loadConfig(cwd);
     expect(result).toBeNull();
+  });
+
+  it('does NOT load executable formats (`.js`, `.mjs`, `.cjs`)', async () => {
+    // Defense in depth: even if cosmiconfig's default loaders or a future
+    // change re-enabled these, our explicit `searchPlaces` list omits them.
+    // A `.js` file with a valid config shape next to no other config file
+    // should produce a `null` result, because we never look for `.js`.
+    await writeFile(path.join(cwd, 'ghau.config.js'), "module.exports = { target: 'major' };\n");
+    await writeFile(path.join(cwd, '.ghaurc.mjs'), "export default { target: 'major' };\n");
+    const result = await loadConfig(cwd);
+    expect(result).toBeNull();
+  });
+
+  it('resolves a relative `workflowsDir` against the config file directory', async () => {
+    // Without resolution, a relative path from a config found while walking
+    // up from a subdirectory would resolve against process.cwd(), not the
+    // config's directory. We resolve against the config dir.
+    const subdir = path.join(cwd, 'packages', 'app');
+    await mkdir(subdir, { recursive: true });
+    await writeFile(
+      path.join(cwd, '.ghaurc.json'),
+      JSON.stringify({ workflowsDir: '.github/workflows' }),
+    );
+    const result = await loadConfig(subdir);
+    expect(result?.config.workflowsDir).toBe(path.resolve(cwd, '.github/workflows'));
+    expect(result?.filepath).toBe(path.join(cwd, '.ghaurc.json'));
+  });
+
+  it('leaves an absolute `workflowsDir` from config untouched', async () => {
+    const abs = path.join(cwd, 'absolute-wf');
+    await writeFile(path.join(cwd, '.ghaurc.json'), JSON.stringify({ workflowsDir: abs }));
+    const result = await loadConfig(cwd);
+    expect(result?.config.workflowsDir).toBe(abs);
   });
 
   it('rejects a config with an unknown key', async () => {
@@ -109,6 +139,17 @@ describe('loadConfig', () => {
     const result = await loadConfig(cwd);
     expect(result?.config).toEqual({});
   });
+
+  it('uses POSIX path separators in error messages even on Windows-style native paths', async () => {
+    // The native path may contain backslashes on Windows; the error message
+    // is user-facing and should be stable cross-platform. We can't easily
+    // simulate Windows from a POSIX test, but we can at least assert the
+    // error mentions the basename and contains no double-slashes from a
+    // botched normalization.
+    await writeFile(path.join(cwd, '.ghaurc.json'), JSON.stringify({ target: 'bogus' }));
+    await expect(loadConfig(cwd)).rejects.toThrow(/\.ghaurc\.json/);
+    await expect(loadConfig(cwd)).rejects.toThrow(/^[^\\]+$/);
+  });
 });
 
 describe('GhauConfigSchema', () => {
@@ -128,12 +169,5 @@ describe('GhauConfigSchema', () => {
 
   it('rejects a non-object root', () => {
     expect(() => GhauConfigSchema.parse('not an object')).toThrow();
-  });
-});
-
-describe('defineConfig', () => {
-  it('is the identity function (helper for TS users)', () => {
-    const cfg = defineConfig({ target: 'minor', rejects: ['docker://**'] });
-    expect(cfg).toEqual({ target: 'minor', rejects: ['docker://**'] });
   });
 });

@@ -4,7 +4,7 @@
 
 Add config-file support via cosmiconfig.
 
-Repo-level defaults can now live in a config file at the repo root — a `ghau` key in `package.json`, `.ghaurc[.json|.yaml|.yml|.js|.cjs|.mjs]`, `ghau.config.[js|cjs|mjs|json]`. CLI flags override config values; config values override built-in defaults. Tokens are deliberately _not_ loadable from config — they belong in env vars or `gh auth token`.
+Repo-level defaults can now live in a **data-only** config file at the repo root — a `ghau` key in `package.json`, `.ghaurc`, `.ghaurc.json`, `.ghaurc.yaml`, `.ghaurc.yml`, or `ghau.config.json`. CLI flags override config values; config values override built-in defaults. Tokens are deliberately _not_ loadable from config — they belong in env vars or `gh auth token`.
 
 Schema (validated by zod; unknown keys are rejected):
 
@@ -19,17 +19,6 @@ interface GhauConfig {
 }
 ```
 
-The package also exports a `defineConfig` helper for editor hints in `.mjs` configs (works in JS-with-`@ts-check` too):
+Relative `workflowsDir` values are resolved against the config file's directory (not `process.cwd()`), so a repo-level `.ghaurc.json` keeps pointing at `<repo-root>/.github/workflows` regardless of which subdirectory inside the repo you invoke `ghau` from.
 
-```js
-// ghau.config.mjs
-import { defineConfig } from 'github-actions-updater';
-
-export default defineConfig({
-  target: 'minor',
-  rejects: ['docker://**'],
-  failOnOutdated: true,
-});
-```
-
-See `docs/guide/config-file.md` for the full schema, search-order, and precedence rules.
+**Executable config formats (`.js`, `.cjs`, `.mjs`, `.ts`) are intentionally not supported.** Allowing them would let `ghau` execute repository-controlled JavaScript during config discovery — and in the composite Action path, `GITHUB_TOKEN` is already in the process environment by the time the CLI starts, so a checked-in `ghau.config.mjs` from an attacker-controlled PR could exfiltrate it. Keeping the config surface data-only eliminates that vector; an opt-in for executable formats may land in a future minor with appropriate CI safeguards. See `docs/guide/config-file.md` for the full rationale.

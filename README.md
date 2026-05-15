@@ -46,11 +46,11 @@ Exit codes:
 | ---- | --------------------------------------------------------------------------------------------------------------------------- |
 | `0`  | The scan ran. By default outdated entries do **not** fail the run — pass `--fail-on-outdated` if you want them to.          |
 | `1`  | At least one resolution errored (and not every resolution did), or `--fail-on-outdated` was set and outdated entries exist. |
-| `2`  | Every resolution errored — usually auth or network.                                                                         |
+| `2`  | Fatal: every resolution errored (usually auth or network), **or** a malformed config file was found and rejected.           |
 
 ## Configuration
 
-Repo-level defaults can live in a config file (`.ghaurc.json`, `ghau.config.mjs`, a `ghau` key in `package.json`, and several other shapes). CLI flags override the config; the config overrides built-in defaults.
+Repo-level defaults can live in a data-only config file (`.ghaurc.json`, `.ghaurc.yaml`, a `ghau` key in `package.json`, and a few other shapes). CLI flags override the config; the config overrides built-in defaults. Executable formats (`.js`, `.mjs`, etc.) are intentionally not supported — see the [config-file guide](https://ylabonte.github.io/github-actions-updater/guide/config-file) for the security rationale.
 
 `.ghaurc.json`:
 
@@ -62,7 +62,7 @@ Repo-level defaults can live in a config file (`.ghaurc.json`, `ghau.config.mjs`
 }
 ```
 
-See [Config file](https://ylabonte.github.io/github-actions-updater/guide/config-file) for the full schema, search-order, and `defineConfig`-typed examples.
+See [Config file](https://ylabonte.github.io/github-actions-updater/guide/config-file) for the full schema, search-order, and precedence rules.
 
 ## Use as a GitHub Action
 

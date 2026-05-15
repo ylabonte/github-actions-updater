@@ -8,6 +8,7 @@ import pc from 'picocolors';
 
 import { resolveAuth } from './core/auth.js';
 import { loadConfig, type GhauConfig } from './core/config.js';
+import { toPosixPath } from './utils/paths.js';
 import { createGitHubClient } from './core/resolver/github-client.js';
 import { createDockerHubClient } from './core/resolver/docker-resolver.js';
 import { runPipeline } from './core/pipeline.js';
@@ -117,7 +118,7 @@ export async function main(argv: readonly string[]): Promise<number> {
   const useColor = opts.color && !opts.json;
 
   if (opts.verbose && configFilepath !== null) {
-    process.stderr.write(pc.dim(`Config: ${configFilepath}\n`));
+    process.stderr.write(pc.dim(`Config: ${toPosixPath(configFilepath)}\n`));
   }
 
   const auth = await resolveAuth({

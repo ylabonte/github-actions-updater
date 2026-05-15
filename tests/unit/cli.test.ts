@@ -117,9 +117,8 @@ describe('isInvokedDirectly', () => {
   });
 
   it('returns false when argv[1] is undefined or empty', () => {
-    const fakeUrl = pathToFileURL(__filename).href;
-    expect(isInvokedDirectly(fakeUrl, undefined)).toBe(false);
-    expect(isInvokedDirectly(fakeUrl, '')).toBe(false);
+    expect(isInvokedDirectly(import.meta.url, undefined)).toBe(false);
+    expect(isInvokedDirectly(import.meta.url, '')).toBe(false);
   });
 
   it('returns true for direct invocation (argv[1] === resolved this-file)', async () => {
