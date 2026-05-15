@@ -178,8 +178,15 @@ runs:
         # `json`/`outdated`/`changes` even when the action itself ends up failing,
         # e.g. to post a drift comment alongside a red check. We replay the
         # captured exit code at the end of the script.
+        #
+        # The `-p package binary` form is intentional. The implicit form
+        # `npx -y package args...` derives the binary name from the package
+        # name, but our package is `github-actions-updater` and our binary is
+        # `ghau` — they don't match, so the implicit form fails at runtime
+        # with `sh: 1: ghau: not found`. The explicit `-p` form decouples the
+        # two: install this package, then run the `ghau` binary from it.
         set +e
-        npx -y "github-actions-updater@$GHAU_VERSION" "${args[@]}" | tee "$report"
+        npx -y -p "github-actions-updater@$GHAU_VERSION" ghau "${args[@]}" | tee "$report"
         cli_exit=${PIPESTATUS[0]}
         set -e
 
