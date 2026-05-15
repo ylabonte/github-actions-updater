@@ -66,4 +66,10 @@ export interface Resolution {
   readonly error?: string;
 }
 
-export type Target = 'latest' | 'major' | 'minor' | 'patch' | 'greatest';
+/**
+ * Single source of truth for the accepted `--target` policy values. The
+ * Commander CLI choices and the zod config schema both derive from this tuple,
+ * so a future addition/rename automatically updates both surfaces.
+ */
+export const TARGETS = ['latest', 'major', 'minor', 'patch', 'greatest'] as const;
+export type Target = (typeof TARGETS)[number];

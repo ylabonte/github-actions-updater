@@ -78,7 +78,7 @@ outputs:
     #   commit: true  → diff HEAD_BEFORE..HEAD_AFTER (the commit just landed)
     #   write only    → diff against the index (rewrites still in the working tree)
   changes:
-    description: 'Number of workflow files actually rewritten by this run. Scoped to the configured workflows directory (the `workflows` input, defaulting to `.github/workflows`), so unrelated YAML edits elsewhere in the repo are not counted. Counted from the just-created commit when `commit: true`, otherwise from the working tree. Always `0` when `write: false` or outside a git repository.'
+    description: 'Number of workflow files actually rewritten by this run. Scoped to the `workflows` input (or `.github/workflows` if empty), so unrelated YAML edits elsewhere in the repo are not counted. Counted from the just-created commit when `commit: true`, otherwise from the working tree. Always `0` when `write: false` or outside a git repository. Known limitation: when `workflowsDir` is set ONLY in a repo config file (not also on the Action input), the count may under-report because the Action computes its diff scope from the input value only — pass the same path explicitly on the Action when relying on `changes` for gating. Proper fix queued for v1.2.'
     value: ${{ steps.run.outputs.changes }}
   json:
     description: 'Path to the JSON report file the action produced.'
