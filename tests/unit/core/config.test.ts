@@ -128,11 +128,42 @@ describe('loadConfig', () => {
     expect(result?.filepath).toBe(path.join(cwd, '.ghaurc.json'));
   });
 
-  it('leaves an absolute `workflowsDir` from config untouched', async () => {
+  it('rejects an absolute `workflowsDir` from config (security: repo configs must stay relative)', async () => {
+    // Absolute paths in checked-in configs are an attack vector: an
+    // attacker-controlled PR could point ghau at `/etc/...` or any other
+    // directory outside the repo. Operators who legitimately need to point
+    // at an absolute path can pass `--workflows` on the CLI directly.
     const abs = path.join(cwd, 'absolute-wf');
     await writeFile(path.join(cwd, '.ghaurc.json'), JSON.stringify({ workflowsDir: abs }));
+    await expect(loadConfig(cwd)).rejects.toThrow(
+      /workflowsDir: must be a path relative to the config file's directory/,
+    );
+  });
+
+  it("rejects a `workflowsDir` that escapes the config file's directory via `..`", async () => {
+    // Same threat model: an attacker controlling the config could use a
+    // `..`-traversing relative path to escape the repo (or the configured
+    // subtree). The containment check after `path.resolve` catches this.
+    await writeFile(
+      path.join(cwd, '.ghaurc.json'),
+      JSON.stringify({ workflowsDir: '../escape-target' }),
+    );
+    await expect(loadConfig(cwd)).rejects.toThrow(
+      /workflowsDir: '\.\.\/escape-target' resolves outside the config file's directory/,
+    );
+  });
+
+  it('accepts a `workflowsDir` whose `..` segments resolve back inside the directory', async () => {
+    // `subdir/../wf` is fine — it resolves to `<cwd>/wf`, which is inside
+    // the config dir. The containment check operates on the resolved path,
+    // not on the literal string.
+    await mkdir(path.join(cwd, 'wf'), { recursive: true });
+    await writeFile(
+      path.join(cwd, '.ghaurc.json'),
+      JSON.stringify({ workflowsDir: 'subdir/../wf' }),
+    );
     const result = await loadConfig(cwd);
-    expect(result?.config.workflowsDir).toBe(abs);
+    expect(result?.config.workflowsDir).toBe(path.resolve(cwd, 'wf'));
   });
 
   it('rejects a config with an unknown key', async () => {
