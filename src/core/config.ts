@@ -115,14 +115,43 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
     throw new Error(`Invalid ghau config in ${toPosixPath(result.filepath)}:\n${issues}`);
   }
 
-  // Resolve a relative `workflowsDir` against the config file's directory.
-  // Without this, `ghau` invoked from `repo/packages/app` with a repo-level
-  // `.ghaurc.json` containing `workflowsDir: ".github/workflows"` would scan
-  // `repo/packages/app/.github/workflows`, not `repo/.github/workflows`.
+  // Validate + resolve `workflowsDir` from config.
+  //
+  // The threat model: a `.ghaurc.json` is repository-controlled, which means
+  // it can be modified by anyone who can land a PR. If the schema accepted
+  // arbitrary paths, an attacker-controlled config could steer the scanner
+  // (and, with `--write`, the YAML rewriter) outside the repo — e.g.
+  // `workflowsDir: "/etc/something"` or `workflowsDir: "../../escape"`.
+  //
+  // Containment rule: config-provided `workflowsDir` MUST be a relative path
+  // that, when resolved against the config file's directory, stays inside
+  // that directory tree. Absolute paths and `..`-escaping paths are
+  // rejected. Callers who need an absolute path can still pass it
+  // explicitly via the CLI's `--workflows` flag (which is an explicit
+  // operator choice, not a checked-in config).
+  //
+  // The other config keys are not paths and don't need this check.
   const config: GhauConfig = parsed.data;
-  if (config.workflowsDir !== undefined && !path.isAbsolute(config.workflowsDir)) {
+  if (config.workflowsDir !== undefined) {
     const configDir = path.dirname(result.filepath);
-    config.workflowsDir = path.resolve(configDir, config.workflowsDir);
+    if (path.isAbsolute(config.workflowsDir)) {
+      throw new Error(
+        `Invalid ghau config in ${toPosixPath(result.filepath)}:\n` +
+          `  workflowsDir: must be a path relative to the config file's directory; ` +
+          `got absolute path '${config.workflowsDir}'. ` +
+          `Use the --workflows CLI flag if you really need to point at an absolute path.`,
+      );
+    }
+    const resolved = path.resolve(configDir, config.workflowsDir);
+    const relative = path.relative(configDir, resolved);
+    if (relative === '..' || relative.startsWith('..' + path.sep)) {
+      throw new Error(
+        `Invalid ghau config in ${toPosixPath(result.filepath)}:\n` +
+          `  workflowsDir: '${config.workflowsDir}' resolves outside the config file's directory ` +
+          `(${toPosixPath(resolved)}). Repo configs may only point at directories inside the repo.`,
+      );
+    }
+    config.workflowsDir = resolved;
   }
 
   return { config, filepath: result.filepath };
