@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { buildProgram, mergeOptions } from '../../src/cli.js';
+import { buildProgram, isInvokedDirectly, mergeOptions } from '../../src/cli.js';
 
 /**
  * Drive `mergeOptions` directly so we exercise the `getOptionValueSource`-gated
@@ -98,6 +102,59 @@ describe('mergeOptions — non-defaulted Commander options', () => {
     expect(merged.filter).toBeUndefined();
     expect(merged.reject).toBeUndefined();
     expect(merged.workflows).toBeUndefined();
+  });
+});
+
+describe('isInvokedDirectly', () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), 'ghau-isinvoked-'));
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('returns false when argv[1] is undefined or empty', () => {
+    const fakeUrl = pathToFileURL(__filename).href;
+    expect(isInvokedDirectly(fakeUrl, undefined)).toBe(false);
+    expect(isInvokedDirectly(fakeUrl, '')).toBe(false);
+  });
+
+  it('returns true for direct invocation (argv[1] === resolved this-file)', async () => {
+    const target = path.join(dir, 'cli.js');
+    await writeFile(target, '// test\n');
+    const url = pathToFileURL(target).href;
+    expect(isInvokedDirectly(url, target)).toBe(true);
+  });
+
+  it('returns true when argv[1] is a symlink to this file (the .bin/ghau case)', async () => {
+    const target = path.join(dir, 'cli.js');
+    await writeFile(target, '// test\n');
+    const symlinkPath = path.join(dir, 'ghau-symlink');
+    await symlink(target, symlinkPath);
+    const url = pathToFileURL(target).href;
+    // The crucial case: argv[1] is the symlink (ending in `ghau-symlink`,
+    // NOT in `cli.js`); the previous endsWith-based check returned false
+    // here and main() never ran. realpath comparison resolves both sides.
+    expect(isInvokedDirectly(url, symlinkPath)).toBe(true);
+  });
+
+  it('returns false when argv[1] points at an unrelated file (e.g. the test runner)', async () => {
+    const target = path.join(dir, 'cli.js');
+    const unrelated = path.join(dir, 'something-else.js');
+    await writeFile(target, '// test\n');
+    await writeFile(unrelated, '// other\n');
+    const url = pathToFileURL(target).href;
+    expect(isInvokedDirectly(url, unrelated)).toBe(false);
+  });
+
+  it('returns false when argv[1] points at a non-existent path (broken link / bad arg)', async () => {
+    const target = path.join(dir, 'cli.js');
+    await writeFile(target, '// test\n');
+    const url = pathToFileURL(target).href;
+    expect(isInvokedDirectly(url, path.join(dir, 'does-not-exist'))).toBe(false);
   });
 });
 

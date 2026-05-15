@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { Command, Option } from '@commander-js/extra-typings';
 import ora from 'ora';
 import pc from 'picocolors';
@@ -222,13 +225,38 @@ async function runCommit(applied: readonly Resolution[], noEdit = false): Promis
   }
 }
 
-// Run when invoked as a script (not when imported by tests).
-const invokedDirectly =
-  import.meta.url === `file://${process.argv[1] ?? ''}` ||
-  process.argv[1]?.endsWith('cli.js') === true ||
-  process.argv[1]?.endsWith('cli.ts') === true;
+/**
+ * True when this module was invoked as a script (vs. imported by tests).
+ *
+ * The naive comparison `import.meta.url === file://${argv[1]}` works only for
+ * direct invocations like `node dist/cli.js`. When the CLI runs via the
+ * `node_modules/.bin/ghau` symlink — which is the *normal* install path —
+ * `argv[1]` is the symlink path (ending in `ghau`), not the resolved
+ * `dist/cli.js` target. The naive check returned false, `main()` never ran,
+ * and the process silently exited 0 (this was a latent bug shipping in 1.0.0).
+ *
+ * The realpath-based comparison resolves both sides to their canonical paths
+ * before comparing, so direct invocations and symlinked invocations both
+ * return true. Tests that `import` this module leave `argv[1]` pointing at
+ * the test runner, so the comparison correctly returns false.
+ */
+export function isInvokedDirectly(metaUrl: string, entryPath: string | undefined): boolean {
+  if (entryPath === undefined || entryPath === '') return false;
+  let thisFile: string;
+  try {
+    thisFile = realpathSync(fileURLToPath(metaUrl));
+  } catch {
+    return false;
+  }
+  if (entryPath === thisFile) return true;
+  try {
+    return realpathSync(entryPath) === thisFile;
+  } catch {
+    return false;
+  }
+}
 
-if (invokedDirectly) {
+if (isInvokedDirectly(import.meta.url, process.argv[1])) {
   void main(process.argv.slice(2)).then((code) => {
     process.exit(code);
   });
