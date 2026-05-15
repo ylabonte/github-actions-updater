@@ -135,25 +135,37 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
   if (config.workflowsDir !== undefined) {
     const configDir = path.dirname(result.filepath);
 
-    // Two pre-resolve checks plus a post-resolve check, in this order. None
-    // is redundant; each catches a class the others miss:
+    // Three pre-resolve checks plus a post-resolve check, in this order.
+    // None is redundant; each catches a class the others miss:
     //
-    //   (1) `path.isAbsolute` catches POSIX absolutes (`/etc/foo`) and
-    //       Windows drive-absolutes (`C:\foo`).
-    //   (2) `/^[A-Za-z]:/` catches Windows drive-RELATIVE paths (`C:foo`,
-    //       `D:foo`), which `path.isAbsolute` returns `false` for despite
-    //       being drive-qualified — `path.resolve` would then resolve them
-    //       against the current working dir on the named drive, landing
-    //       outside the config tree. We reject this form even on POSIX
-    //       (where `C:foo` is technically a valid dirname) because configs
-    //       are checked in and must be portable.
-    //   (3) After resolve, the relative-path check catches `..`-escape
+    //   (1) `path.isAbsolute` (native) catches absolutes for the platform
+    //       we're running on. On POSIX that's `/foo`; on Windows that's
+    //       `C:\foo`, `\foo`, `\\server\share`, etc.
+    //   (2) `path.win32.isAbsolute` catches Windows absolutes even when
+    //       we're running on POSIX. A checked-in config could be opened
+    //       on Linux (where the native check would miss `\\server\share`)
+    //       and the resulting `path.resolve` would treat the value as a
+    //       literal dirname — not an escape on POSIX, but the same config
+    //       file is meant to be portable, and the same value would be a
+    //       real escape if anyone ran the project on Windows. Reject it
+    //       up front so the configs are platform-invariant.
+    //   (3) `/^[A-Za-z]:/` catches Windows drive-RELATIVE paths (`C:foo`,
+    //       `D:foo`), which neither absolute check returns `true` for
+    //       despite being drive-qualified — `path.resolve` would then
+    //       resolve them against the current working dir on the named
+    //       drive, landing outside the config tree. Same portability
+    //       reasoning: rejected even on POSIX.
+    //   (4) After resolve, the relative-path check catches `..`-escape
     //       AND the case where the resolved path landed on a different
     //       drive (Windows): `path.relative` returns an absolute string
     //       when there's no relative way to express the link between two
     //       paths on different roots. `path.isAbsolute(relative)` flags
     //       that as an escape.
-    if (path.isAbsolute(config.workflowsDir) || /^[A-Za-z]:/.test(config.workflowsDir)) {
+    if (
+      path.isAbsolute(config.workflowsDir) ||
+      path.win32.isAbsolute(config.workflowsDir) ||
+      /^[A-Za-z]:/.test(config.workflowsDir)
+    ) {
       throw new Error(
         `Invalid ghau config in ${toPosixPath(result.filepath)}:\n` +
           `  workflowsDir: must be a path relative to the config file's directory; ` +

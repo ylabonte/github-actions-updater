@@ -72,6 +72,27 @@ subdirectory inside the repo you invoke `ghau` from.
 CLI-provided `--workflows` paths stay `process.cwd()`-relative (that's the
 standard CLI behavior).
 
+::: warning Containment is enforced
+Because a config file is repository-controlled, `workflowsDir` is required
+to stay inside the config file's directory tree. The loader rejects (with
+exit code `2`):
+
+- **Absolute paths** in any platform-recognized form — POSIX (`/foo`),
+  Windows drive-absolutes (`C:\foo`), Windows-rooted (`\foo`), and UNC
+  (`\\server\share`). The Windows forms are rejected even when the config
+  is loaded on POSIX, so the same checked-in file behaves consistently
+  across platforms.
+- **Drive-relative paths** (`C:foo`, `D:foo`) for the same portability
+  reason.
+- **`..`-escaping paths** that resolve outside the config file's
+  directory (the check is on the _resolved_ path, so benign cases like
+  `subdir/../wf` still work).
+
+If you need an absolute path for a single run, use the CLI's
+`--workflows` flag instead — that's an explicit operator choice rather
+than a checked-in repo policy.
+:::
+
 ## Examples
 
 ### Repo-level defaults via `.ghaurc.json`
