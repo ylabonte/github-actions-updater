@@ -93,6 +93,12 @@ exit code `2`):
   containment, so a repo-controlled `ln -s ../../outside wf` plus
   `workflowsDir: wf` is rejected. In-tree symlinks (`wf` → an
   inside-the-repo directory) are still allowed.
+- **Paths containing backslashes** of any kind (`..\outside`,
+  `subdir\nested\wf`). Backslash is a Windows-only path separator —
+  POSIX treats it as a literal character — so a checked-in config
+  containing one would silently mean two different things on Linux CI
+  vs. a Windows runner. Always write `workflowsDir` with `/`
+  separators.
 
 If you need an absolute path for a single run, use the CLI's
 `--workflows` flag instead — that's an explicit operator choice rather
