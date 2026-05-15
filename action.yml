@@ -58,11 +58,11 @@ inputs:
     # decide whether to allow branch-pin conversion; `true` / `false` from
     # the Action input forces the choice for this single run (matching the
     # CLI's `--allow-branch-pin` / `--no-allow-branch-pin` symmetry).
-    description: 'On --write, convert branch refs to pinned SHAs. Tri-state: empty (default) defers to repo config or CLI default (`false`); `true` forces the conversion; `false` forces no-conversion even if a config file enables it.'
+    description: 'On --write, convert branch refs to pinned SHAs. Tri-state: empty (default) defers to repo config or CLI default (`false`); `true` forces the conversion; `false` forces no-conversion even if a config file enables it. Note: `false` requires github-actions-updater >= 1.1.0 (it forwards `--no-allow-branch-pin` to the CLI). Pinning `version` to a 1.0.x CLI with `false` is treated as a no-op + warning, preserving the pre-1.1 behavior where the default already was no-conversion.'
     required: false
     default: ''
   fail-on-outdated:
-    description: 'Exit non-zero when outdated entries are found. Tri-state: empty (default) defers to repo config or CLI default (`false`); `true` enables the CI gate; `false` forces drift-tolerance even if a config file enables the gate.'
+    description: 'Exit non-zero when outdated entries are found. Tri-state: empty (default) defers to repo config or CLI default (`false`); `true` enables the CI gate; `false` forces drift-tolerance even if a config file enables the gate. Note: `false` requires github-actions-updater >= 1.1.0 (it forwards `--no-fail-on-outdated` to the CLI). Pinning `version` to a 1.0.x CLI with `false` is treated as a no-op + warning, preserving the pre-1.1 behavior where the default already was drift-tolerant.'
     required: false
     default: ''
   github-token:
@@ -185,15 +185,44 @@ runs:
         # this run, including the ability to disable a config-set value
         # via the CLI's `--no-*` negative forms — the same precedence
         # symmetry the CLI offers directly.
+        #
+        # Back-compat gate for `false`: the negative flags
+        # (`--no-allow-branch-pin`, `--no-fail-on-outdated`) are new in
+        # CLI 1.1.0. A caller pinning `version: '1.0.x'` and also setting
+        # the tri-state input to `false` would otherwise see the older
+        # CLI crash with "unknown option". Before 1.1.0, `false` was a
+        # no-op anyway (the CLI's built-in default was already `false`),
+        # so preserve that pre-1.1 behavior for old pins by skipping the
+        # flag and emitting a warning that explains the disconnect. Any
+        # version spec other than the literal `1.0.x` family — including
+        # `1`, `latest`, `1.1.0`, `2`, dist-tags, and prereleases not in
+        # the 1.0 series — is assumed to support the flag (which is true
+        # once 1.1.0 publishes).
+        ghau_supports_negative_flags=true
+        if [[ "$GHAU_VERSION" =~ ^1\.0([.+-]|$) ]]; then
+          ghau_supports_negative_flags=false
+        fi
         case "$GHAU_ALLOW_BRANCH_PIN" in
           true)  args+=(--allow-branch-pin) ;;
-          false) args+=(--no-allow-branch-pin) ;;
+          false)
+            if [[ "$ghau_supports_negative_flags" == "true" ]]; then
+              args+=(--no-allow-branch-pin)
+            else
+              echo "::warning::'allow-branch-pin: false' requires github-actions-updater >= 1.1.0; the pinned version '$(gha_escape "$GHAU_VERSION")' predates --no-allow-branch-pin. Treating as a no-op (matches the pre-1.1 default behavior of no-conversion). Upgrade 'version' to '1' or higher to force the flag against a config-set true."
+            fi
+            ;;
           '')    ;;
           *)     echo "::warning::Invalid 'allow-branch-pin' input '$(gha_escape "$GHAU_ALLOW_BRANCH_PIN")' (expected 'true', 'false', or empty); ignoring." ;;
         esac
         case "$GHAU_FAIL_ON_OUTDATED" in
           true)  args+=(--fail-on-outdated) ;;
-          false) args+=(--no-fail-on-outdated) ;;
+          false)
+            if [[ "$ghau_supports_negative_flags" == "true" ]]; then
+              args+=(--no-fail-on-outdated)
+            else
+              echo "::warning::'fail-on-outdated: false' requires github-actions-updater >= 1.1.0; the pinned version '$(gha_escape "$GHAU_VERSION")' predates --no-fail-on-outdated. Treating as a no-op (matches the pre-1.1 default behavior of drift-tolerance). Upgrade 'version' to '1' or higher to force the flag against a config-set true."
+            fi
+            ;;
           '')    ;;
           *)     echo "::warning::Invalid 'fail-on-outdated' input '$(gha_escape "$GHAU_FAIL_ON_OUTDATED")' (expected 'true', 'false', or empty); ignoring." ;;
         esac

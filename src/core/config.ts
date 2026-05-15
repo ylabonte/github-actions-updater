@@ -174,7 +174,7 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
   if (config.workflowsDir !== undefined) {
     const configDir = path.dirname(result.filepath);
 
-    // Three pre-resolve checks plus two post-resolve checks, in this order.
+    // Four pre-resolve checks plus two post-resolve checks, in this order.
     // None is redundant; each catches a class the others miss:
     //
     //   (1) `path.isAbsolute` (native) catches absolutes for the platform
@@ -194,12 +194,25 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
     //       resolve them against the current working dir on the named
     //       drive, landing outside the config tree. Same portability
     //       reasoning: rejected even on POSIX.
-    //   (4) After lexical resolve, the relative-path check catches
+    //   (4) Any literal backslash in the value is rejected for portability.
+    //       This catches Windows-style RELATIVE traversal (`..\outside`,
+    //       `subdir\nested`) that the absolute checks above miss: on POSIX,
+    //       `path.resolve(configDir, '..\\outside')` treats the value as a
+    //       literal filename containing a backslash (no escape), but on
+    //       Windows the same value IS a `..`-traversal and would escape
+    //       the config tree. A checked-in config that "passes" on Linux CI
+    //       and silently re-interprets on a Windows runner is exactly the
+    //       portability failure the cross-platform absolute checks above
+    //       are meant to prevent — extending the rule to backslashes
+    //       anywhere in the value keeps configs platform-invariant.
+    //       Workflow directories in real repos don't legitimately contain
+    //       backslashes, so this is a safe default.
+    //   (5) After lexical resolve, the relative-path check catches
     //       `..`-escape AND the case where the resolved path landed on a
     //       different drive (Windows): `path.relative` returns an
     //       absolute string when there's no relative way to express the
     //       link between two paths on different roots.
-    //   (5) After symlink resolve (`realpath` on the deepest existing
+    //   (6) After symlink resolve (`realpath` on the deepest existing
     //       prefix), the same relative-path check catches the case where
     //       `workflowsDir` points at a symlink inside the config tree
     //       whose target lands outside. The scanner and writer follow
@@ -217,6 +230,17 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
           `  workflowsDir: must be a path relative to the config file's directory; ` +
           `got '${normalizeForMessage(config.workflowsDir)}'. ` +
           `Use the --workflows CLI flag if you really need to point at an absolute path.`,
+      );
+    }
+    if (config.workflowsDir.includes('\\')) {
+      throw new Error(
+        `Invalid ghau config in ${toPosixPath(result.filepath)}:\n` +
+          `  workflowsDir: must use forward slashes for portability; ` +
+          `got '${normalizeForMessage(config.workflowsDir)}'. ` +
+          `Backslashes are Windows-only path separators — a checked-in config containing them ` +
+          `would silently behave differently on POSIX runners vs. Windows runners (e.g. ` +
+          `'..\\\\outside' is a literal filename on POSIX but a real \`..\`-escape on Windows). ` +
+          `Rewrite the path with '/' separators.`,
       );
     }
     const resolved = path.resolve(configDir, config.workflowsDir);

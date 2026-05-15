@@ -194,6 +194,37 @@ describe('loadConfig', () => {
     );
   });
 
+  it('rejects a `workflowsDir` containing backslashes (Windows-style relative traversal)', async () => {
+    // `..\\outside` is a literal filename on POSIX (the absolute-check passes,
+    // `path.resolve` keeps it as a single segment containing a backslash, the
+    // relative-path check says "still inside configDir"), but on Windows it's
+    // a real `..`-escape that lands outside the config tree. A checked-in
+    // config that's safe on Linux CI but unsafe on a Windows runner is the
+    // same portability failure the absolute-form cross-platform checks are
+    // there to prevent. Reject any value containing `\` so configs behave
+    // identically on every platform.
+    await writeFile(
+      path.join(cwd, '.ghaurc.json'),
+      JSON.stringify({ workflowsDir: String.raw`..\outside` }),
+    );
+    await expect(loadConfig(cwd)).rejects.toThrow(
+      /workflowsDir: must use forward slashes for portability/,
+    );
+  });
+
+  it('rejects a `workflowsDir` with backslashes in a nested relative form', async () => {
+    // Catches the less-obvious case where the value doesn't begin with `..`
+    // but uses `\` as a separator anywhere. Same portability concern: a
+    // Windows runner would interpret the separator, a POSIX runner wouldn't.
+    await writeFile(
+      path.join(cwd, '.ghaurc.json'),
+      JSON.stringify({ workflowsDir: String.raw`subdir\nested\wf` }),
+    );
+    await expect(loadConfig(cwd)).rejects.toThrow(
+      /workflowsDir: must use forward slashes for portability/,
+    );
+  });
+
   it("rejects a `workflowsDir` that escapes the config file's directory via `..`", async () => {
     // Same threat model: an attacker controlling the config could use a
     // `..`-traversing relative path to escape the repo (or the configured
