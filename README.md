@@ -48,6 +48,21 @@ Exit codes:
 | `1`  | At least one resolution errored (and not every resolution did), or `--fail-on-outdated` was set and outdated entries exist. |
 | `2`  | Every resolution errored — usually auth or network.                                                                         |
 
+## Configuration
+
+Repo-level defaults can live in a config file (`.ghaurc.json`, `ghau.config.ts`, a `ghau` key in `package.json`, and several other shapes). CLI flags override the config; the config overrides built-in defaults.
+
+```json
+// .ghaurc.json
+{
+  "target": "minor",
+  "rejects": ["docker://**"],
+  "failOnOutdated": true
+}
+```
+
+See [Config file](https://ylabonte.github.io/github-actions-updater/guide/config-file) for the full schema, search-order, and `defineConfig`-typed examples.
+
 ## Use as a GitHub Action
 
 `github-actions-updater` is also a composite GitHub Action — the same CLI, wrapped so you can drop it into any workflow:

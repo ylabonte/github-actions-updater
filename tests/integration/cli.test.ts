@@ -90,4 +90,57 @@ describe('cli end-to-end', () => {
     expect(data.summary.outdated).toBe(0);
     expect(r.exitCode).toBe(0);
   }, 30_000);
+
+  it('logs the config file path in verbose mode when one is discovered', async () => {
+    await writeFile(join(cwd, '.ghaurc.json'), JSON.stringify({ target: 'minor' }));
+    const r = await runCli(['--verbose', '--json'], cwd);
+    expect(r.stderr).toContain('Config:');
+    expect(r.stderr).toContain('.ghaurc.json');
+    expect(r.exitCode).toBe(0);
+  }, 30_000);
+
+  it('config values feed the pipeline (rejects-from-config filters out actions)', async () => {
+    await writeFile(
+      join(cwd, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  x:\n    steps:\n      - uses: actions/checkout@v3\n',
+    );
+    await writeFile(join(cwd, '.ghaurc.json'), JSON.stringify({ rejects: ['actions/*'] }));
+    // The reject glob removes every action from the scan → 0 outdated, exit 0,
+    // even though the workflow file contains an outdated action and we have no
+    // network. If the config wasn't picked up the scan would attempt to resolve
+    // and the structure of the result would differ.
+    const r = await runCli(['--json'], cwd);
+    const data = JSON.parse(r.stdout) as {
+      summary: { outdated: number; total: number };
+      entries: unknown[];
+    };
+    expect(data.entries).toHaveLength(0);
+    expect(data.summary.outdated).toBe(0);
+    expect(r.exitCode).toBe(0);
+  }, 30_000);
+
+  it('CLI flags override config values', async () => {
+    await writeFile(
+      join(cwd, '.github', 'workflows', 'ci.yml'),
+      'jobs:\n  x:\n    steps:\n      - uses: actions/checkout@v3\n',
+    );
+    await writeFile(join(cwd, '.ghaurc.json'), JSON.stringify({ rejects: ['actions/*'] }));
+    // CLI `--reject nothing-matches/**` overrides the config's `rejects: ['actions/*']`,
+    // so the action is no longer filtered out and reaches the (unresolvable, no-network)
+    // GitHub fetch. We assert the entry is present, not its resolution outcome.
+    const r = await runCli(['--json', '--reject', 'nothing-matches/**'], cwd);
+    const data = JSON.parse(r.stdout) as {
+      entries: { action: string }[];
+    };
+    expect(data.entries.length).toBeGreaterThan(0);
+    expect(data.entries[0]?.action).toBe('actions/checkout');
+  }, 30_000);
+
+  it('exits 2 with a clear error message when the config is malformed', async () => {
+    await writeFile(join(cwd, '.ghaurc.json'), JSON.stringify({ target: 'made-up-target' }));
+    const r = await runCli(['--json'], cwd);
+    expect(r.stderr).toContain('Invalid ghau config');
+    expect(r.stderr).toContain('target');
+    expect(r.exitCode).toBe(2);
+  }, 30_000);
 });

@@ -188,6 +188,18 @@ This matters doubly when behavior evolves across several commits in one PR. The
 doc paragraph that was correct on commit N can drift wrong on commit N+3 even
 though nothing about the paragraph changed.
 
+**Doc surfaces drift in both directions.** The lens above catches _code → docs_
+drift — code moves, prose goes stale. The reverse — _docs describing a feature
+the code doesn't ship_ — is just as common and harder to spot, because nothing
+is "wrong" in the code; the gap is the absence of code. The v1.1.0 config-file
+implementation closed exactly this kind of gap (`docs/guide/config-file.md`
+documented a cosmiconfig integration that no source file implemented, with the
+deps already in `package.json` — drift hiding in plain sight). When you add a
+feature, walk the docs that _already_ describe it and reconcile to match what
+ships; when you remove one, walk the docs that _still_ describe it. A useful
+sanity check: when you land in any `docs/guide/*` page, ask "is there a `src/`
+file that backs every sentence here?"
+
 Two anti-patterns from past sessions:
 
 - **Universal-sounding claims in scoped docs.** "All CLI behavior is unchanged"

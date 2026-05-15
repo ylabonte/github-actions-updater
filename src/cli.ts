@@ -4,6 +4,7 @@ import ora from 'ora';
 import pc from 'picocolors';
 
 import { resolveAuth } from './core/auth.js';
+import { loadConfig, type GhauConfig } from './core/config.js';
 import { createGitHubClient } from './core/resolver/github-client.js';
 import { createDockerHubClient } from './core/resolver/docker-resolver.js';
 import { runPipeline } from './core/pipeline.js';
@@ -60,8 +61,49 @@ export function buildProgram() {
 export async function main(argv: readonly string[]): Promise<number> {
   const program = buildProgram();
   await program.parseAsync(argv, { from: 'user' });
-  const opts = program.opts();
+  const cliOpts = program.opts();
+
+  // Config file: search from cwd upward. Errors (bad shape, schema violations)
+  // are fatal — surface and exit 2.
+  let configFilepath: string | null = null;
+  let configValues: GhauConfig = {};
+  try {
+    const loaded = await loadConfig();
+    if (loaded !== null) {
+      configFilepath = loaded.filepath;
+      configValues = loaded.config;
+    }
+  } catch (error) {
+    process.stderr.write(pc.red(`✖ ${(error as Error).message}\n`));
+    return 2;
+  }
+
+  // Merge: CLI flags override config values; config values override hardcoded
+  // defaults. For options Commander sets to a `.default()`, only fall back to
+  // config when getOptionValueSource is 'default'. For options without a
+  // default, a plain `??` from CLI to config is enough.
+  const fromConfig = <T>(name: string, configValue: T | undefined): T | undefined => {
+    if (configValue === undefined) return undefined;
+    if (program.getOptionValueSource(name) !== 'default') return undefined;
+    return configValue;
+  };
+
+  const opts = {
+    ...cliOpts,
+    target: fromConfig('target', configValues.target) ?? cliOpts.target,
+    filter: cliOpts.filter ?? configValues.filters,
+    reject: cliOpts.reject ?? configValues.rejects,
+    workflows: cliOpts.workflows ?? configValues.workflowsDir,
+    allowBranchPin:
+      fromConfig('allowBranchPin', configValues.allowBranchPin) ?? cliOpts.allowBranchPin,
+    failOnOutdated:
+      fromConfig('failOnOutdated', configValues.failOnOutdated) ?? cliOpts.failOnOutdated,
+  };
   const useColor = opts.color && !opts.json;
+
+  if (opts.verbose && configFilepath !== null) {
+    process.stderr.write(pc.dim(`Config: ${configFilepath}\n`));
+  }
 
   const auth = await resolveAuth({
     ...(opts.token !== undefined && { explicitToken: opts.token }),
