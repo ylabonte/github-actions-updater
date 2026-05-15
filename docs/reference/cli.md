@@ -41,8 +41,8 @@ Options:
 
 ## Exit codes
 
-| Code | When                                                                                                                  |
-| ---- | --------------------------------------------------------------------------------------------------------------------- |
-| `0`  | The scan ran. Outdated entries do **not** fail by default — opt in with `--fail-on-outdated` if you want CI to break. |
-| `1`  | A resolution errored (partial failure), or `--fail-on-outdated` was set and outdated entries exist.                   |
-| `2`  | Every resolution errored — usually auth/network or rate limiting.                                                     |
+| Code | When                                                                                                                            |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | The scan ran. Outdated entries do **not** fail by default — opt in with `--fail-on-outdated` if you want CI to break.           |
+| `1`  | A resolution errored (partial failure), or `--fail-on-outdated` was set and outdated entries exist.                             |
+| `2`  | Fatal: every resolution errored (usually auth/network or rate limiting), **or** a malformed config file was found and rejected. |
