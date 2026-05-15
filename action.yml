@@ -52,13 +52,19 @@ inputs:
     required: false
     default: 'false'
   allow-branch-pin:
-    description: 'On --write, convert branch refs to pinned SHAs.'
+    # Tri-state, parallel to `target`'s empty-default pattern. The empty
+    # default is what lets a repo's data-only config file
+    # (`.ghaurc.json`, `ghau.config.json`, or a `ghau` key in `package.json`)
+    # decide whether to allow branch-pin conversion; `true` / `false` from
+    # the Action input forces the choice for this single run (matching the
+    # CLI's `--allow-branch-pin` / `--no-allow-branch-pin` symmetry).
+    description: 'On --write, convert branch refs to pinned SHAs. Tri-state: empty (default) defers to repo config or CLI default (`false`); `true` forces the conversion; `false` forces no-conversion even if a config file enables it.'
     required: false
-    default: 'false'
+    default: ''
   fail-on-outdated:
-    description: 'Exit non-zero when outdated entries are found.'
+    description: 'Exit non-zero when outdated entries are found. Tri-state: empty (default) defers to repo config or CLI default (`false`); `true` enables the CI gate; `false` forces drift-tolerance even if a config file enables the gate.'
     required: false
-    default: 'false'
+    default: ''
   github-token:
     description: 'Token used for GitHub API auth. Defaults to the workflow-provided `github.token` when left empty.'
     required: false
@@ -155,8 +161,27 @@ runs:
         [[ -n "$GHAU_WORKFLOWS"           ]] && args+=(--workflows "$GHAU_WORKFLOWS")
         [[ "$GHAU_WRITE"            == "true" ]] && args+=(--write)
         [[ "$GHAU_COMMIT"           == "true" ]] && args+=(--commit --no-edit)
-        [[ "$GHAU_ALLOW_BRANCH_PIN" == "true" ]] && args+=(--allow-branch-pin)
-        [[ "$GHAU_FAIL_ON_OUTDATED" == "true" ]] && args+=(--fail-on-outdated)
+
+        # Tri-state for `allow-branch-pin` and `fail-on-outdated`: empty
+        # input defers to whatever the CLI resolves from its built-in
+        # default or the repo's config file (`.ghaurc.json` /
+        # `ghau.config.json` / package.json `ghau` field). An explicit
+        # `true` or `false` from the Action user forces the choice for
+        # this run, including the ability to disable a config-set value
+        # via the CLI's `--no-*` negative forms — the same precedence
+        # symmetry the CLI offers directly.
+        case "$GHAU_ALLOW_BRANCH_PIN" in
+          true)  args+=(--allow-branch-pin) ;;
+          false) args+=(--no-allow-branch-pin) ;;
+          '')    ;;
+          *)     echo "::warning::Invalid 'allow-branch-pin' input '${GHAU_ALLOW_BRANCH_PIN}' (expected 'true', 'false', or empty); ignoring." ;;
+        esac
+        case "$GHAU_FAIL_ON_OUTDATED" in
+          true)  args+=(--fail-on-outdated) ;;
+          false) args+=(--no-fail-on-outdated) ;;
+          '')    ;;
+          *)     echo "::warning::Invalid 'fail-on-outdated' input '${GHAU_FAIL_ON_OUTDATED}' (expected 'true', 'false', or empty); ignoring." ;;
+        esac
 
         # Capture HEAD before running so we can tell afterward whether --commit
         # landed a commit. Empty when not in a git repo or on an unborn branch;

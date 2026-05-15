@@ -89,7 +89,20 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
     stopDir: '/',
   });
 
-  const result = await explorer.search(cwd);
+  let result: Awaited<ReturnType<typeof explorer.search>>;
+  try {
+    result = await explorer.search(cwd);
+  } catch (error) {
+    // cosmiconfig's parser errors (invalid JSON/YAML in a discovered config
+    // file) include the native filepath, which contains backslashes on
+    // Windows. The codebase convention is to POSIX-normalize any human-
+    // readable path before it reaches the user (see `src/utils/paths.ts`
+    // and the schema-validation error below). Rethrow with backslashes
+    // swapped so the message is stable cross-platform; preserve the
+    // original via `cause` for upstream consumers that want the raw error.
+    const message = (error as Error).message.replaceAll('\\', '/');
+    throw new Error(`Invalid ghau config: ${message}`, { cause: error });
+  }
   if (result === null || result.isEmpty === true) return null;
 
   const parsed = GhauConfigSchema.safeParse(result.config);
