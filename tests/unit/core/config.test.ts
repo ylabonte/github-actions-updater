@@ -140,6 +140,32 @@ describe('loadConfig', () => {
     );
   });
 
+  it('rejects a Windows-rooted `workflowsDir` even when loading on POSIX', async () => {
+    // `path.isAbsolute('\\\\server\\share')` returns false on POSIX, so the
+    // native check alone would miss it. We additionally use
+    // `path.win32.isAbsolute` to reject Windows-absolute forms (UNC paths,
+    // backslash-rooted) regardless of the platform the config is loaded
+    // on — checked-in configs need to be portable, and the same value
+    // would be a real escape on a Windows runner.
+    await writeFile(
+      path.join(cwd, '.ghaurc.json'),
+      JSON.stringify({ workflowsDir: String.raw`\\server\share` }),
+    );
+    await expect(loadConfig(cwd)).rejects.toThrow(
+      /workflowsDir: must be a path relative to the config file's directory/,
+    );
+  });
+
+  it('rejects a Windows drive-absolute `workflowsDir` (`C:\\foo`-style) even on POSIX', async () => {
+    await writeFile(
+      path.join(cwd, '.ghaurc.json'),
+      JSON.stringify({ workflowsDir: String.raw`C:\wf` }),
+    );
+    await expect(loadConfig(cwd)).rejects.toThrow(
+      /workflowsDir: must be a path relative to the config file's directory/,
+    );
+  });
+
   it('rejects a Windows drive-relative `workflowsDir` (`C:foo`-style)', async () => {
     // `path.isAbsolute('C:foo')` returns false on Windows because `C:foo`
     // is drive-RELATIVE (resolves against the current dir on C:), yet
