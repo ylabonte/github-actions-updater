@@ -58,10 +58,42 @@ export function buildProgram() {
     .option('-v, --verbose', 'verbose logging', false);
 }
 
+/**
+ * Merge a parsed Commander program with a loaded config file.
+ *
+ * Precedence: explicit CLI flag > config file value > Commander default.
+ *
+ * For options with a Commander `.default()`, we only let the config win when
+ * `program.getOptionValueSource(name) === 'default'` — that's how Commander
+ * tells us "this value came from the default, not from the CLI". For options
+ * without a default (`filter`, `reject`, `workflows`), the value is undefined
+ * when not passed, and a plain `??` from CLI to config does the right thing.
+ *
+ * Extracted from `main()` for testability — the integration suite can't
+ * easily assert merge results without network mocks, but unit tests can drive
+ * this function directly.
+ */
+export function mergeOptions(program: ReturnType<typeof buildProgram>, config: GhauConfig) {
+  const cliOpts = program.opts();
+  const fromConfig = <T>(name: string, configValue: T | undefined): T | undefined => {
+    if (configValue === undefined) return undefined;
+    if (program.getOptionValueSource(name) !== 'default') return undefined;
+    return configValue;
+  };
+  return {
+    ...cliOpts,
+    target: fromConfig('target', config.target) ?? cliOpts.target,
+    filter: cliOpts.filter ?? config.filters,
+    reject: cliOpts.reject ?? config.rejects,
+    workflows: cliOpts.workflows ?? config.workflowsDir,
+    allowBranchPin: fromConfig('allowBranchPin', config.allowBranchPin) ?? cliOpts.allowBranchPin,
+    failOnOutdated: fromConfig('failOnOutdated', config.failOnOutdated) ?? cliOpts.failOnOutdated,
+  };
+}
+
 export async function main(argv: readonly string[]): Promise<number> {
   const program = buildProgram();
   await program.parseAsync(argv, { from: 'user' });
-  const cliOpts = program.opts();
 
   // Config file: search from cwd upward. Errors (bad shape, schema violations)
   // are fatal — surface and exit 2.
@@ -78,27 +110,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     return 2;
   }
 
-  // Merge: CLI flags override config values; config values override hardcoded
-  // defaults. For options Commander sets to a `.default()`, only fall back to
-  // config when getOptionValueSource is 'default'. For options without a
-  // default, a plain `??` from CLI to config is enough.
-  const fromConfig = <T>(name: string, configValue: T | undefined): T | undefined => {
-    if (configValue === undefined) return undefined;
-    if (program.getOptionValueSource(name) !== 'default') return undefined;
-    return configValue;
-  };
-
-  const opts = {
-    ...cliOpts,
-    target: fromConfig('target', configValues.target) ?? cliOpts.target,
-    filter: cliOpts.filter ?? configValues.filters,
-    reject: cliOpts.reject ?? configValues.rejects,
-    workflows: cliOpts.workflows ?? configValues.workflowsDir,
-    allowBranchPin:
-      fromConfig('allowBranchPin', configValues.allowBranchPin) ?? cliOpts.allowBranchPin,
-    failOnOutdated:
-      fromConfig('failOnOutdated', configValues.failOnOutdated) ?? cliOpts.failOnOutdated,
-  };
+  const opts = mergeOptions(program, configValues);
   const useColor = opts.color && !opts.json;
 
   if (opts.verbose && configFilepath !== null) {
