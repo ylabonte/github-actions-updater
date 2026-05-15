@@ -87,6 +87,12 @@ exit code `2`):
 - **`..`-escaping paths** that resolve outside the config file's
   directory (the check is on the _resolved_ path, so benign cases like
   `subdir/../wf` still work).
+- **Symlink-escaping paths**, where the literal value is contained but
+  the realpath of the configured directory points outside the config
+  tree. The check resolves through symlinks before re-verifying
+  containment, so a repo-controlled `ln -s ../../outside wf` plus
+  `workflowsDir: wf` is rejected. In-tree symlinks (`wf` → an
+  inside-the-repo directory) are still allowed.
 
 If you need an absolute path for a single run, use the CLI's
 `--workflows` flag instead — that's an explicit operator choice rather

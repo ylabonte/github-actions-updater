@@ -29,6 +29,7 @@
  * site in `src/cli.ts`.
  */
 
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { cosmiconfig } from 'cosmiconfig';
@@ -36,6 +37,42 @@ import { z } from 'zod';
 
 import { TARGETS } from './types.js';
 import { toPosixPath } from '../utils/paths.js';
+
+/**
+ * Resolve every symlink encountered along `p`, even if the final segment (or
+ * some prefix) doesn't exist yet. We can't call `fs.realpath` directly because
+ * it requires every segment to exist. Instead, walk upward until we find a
+ * segment that does exist, `realpath` that prefix, then re-attach the rest.
+ *
+ * This is used for the symlink-containment check on `workflowsDir`: the
+ * configured directory may not exist when the config loads (think `ghau` on a
+ * fresh checkout), but if any ancestor IS a symlink, we must still detect that
+ * the effective destination is outside the config tree.
+ */
+async function realPathOfExistingPrefix(p: string): Promise<string> {
+  try {
+    return await fs.realpath(p);
+  } catch {
+    const parent = path.dirname(p);
+    /* c8 ignore next — defensive: the recursion bottoms out before reaching the FS root in practice. */
+    if (parent === p) return p;
+    const realParent = await realPathOfExistingPrefix(parent);
+    return path.join(realParent, path.basename(p));
+  }
+}
+
+/**
+ * Cross-platform POSIX normalization for paths embedded in user-facing error
+ * messages. Unlike `toPosixPath` (which only swaps the native separator), this
+ * unconditionally swaps backslashes so a Windows-form value (`C:\wf`,
+ * `\\server\share`) rejected on a POSIX runner still prints with forward
+ * slashes. The error is a portability signal, not a render of an on-disk
+ * path — backslash-leaking the value would re-add confusion the loader is
+ * explicitly trying to prevent.
+ */
+function normalizeForMessage(p: string): string {
+  return p.replaceAll('\\', '/');
+}
 
 export const GhauConfigSchema = z
   .object({
@@ -121,21 +158,23 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
   // it can be modified by anyone who can land a PR. If the schema accepted
   // arbitrary paths, an attacker-controlled config could steer the scanner
   // (and, with `--write`, the YAML rewriter) outside the repo — e.g.
-  // `workflowsDir: "/etc/something"` or `workflowsDir: "../../escape"`.
+  // `workflowsDir: "/etc/something"`, `workflowsDir: "../../escape"`, or a
+  // value pointing at a symlink that resolves outside the repo.
   //
   // Containment rule: config-provided `workflowsDir` MUST be a relative path
-  // that, when resolved against the config file's directory, stays inside
-  // that directory tree. Absolute paths and `..`-escaping paths are
-  // rejected. Callers who need an absolute path can still pass it
-  // explicitly via the CLI's `--workflows` flag (which is an explicit
-  // operator choice, not a checked-in config).
+  // that, when resolved against the config file's directory AND with all
+  // symlinks fully resolved, stays inside that directory tree. Absolute
+  // paths, `..`-escaping paths, AND symlink-escaping paths are rejected.
+  // Callers who need an absolute path can still pass it explicitly via the
+  // CLI's `--workflows` flag (which is an explicit operator choice, not a
+  // checked-in config).
   //
   // The other config keys are not paths and don't need this check.
   const config: GhauConfig = parsed.data;
   if (config.workflowsDir !== undefined) {
     const configDir = path.dirname(result.filepath);
 
-    // Three pre-resolve checks plus a post-resolve check, in this order.
+    // Three pre-resolve checks plus two post-resolve checks, in this order.
     // None is redundant; each catches a class the others miss:
     //
     //   (1) `path.isAbsolute` (native) catches absolutes for the platform
@@ -155,12 +194,19 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
     //       resolve them against the current working dir on the named
     //       drive, landing outside the config tree. Same portability
     //       reasoning: rejected even on POSIX.
-    //   (4) After resolve, the relative-path check catches `..`-escape
-    //       AND the case where the resolved path landed on a different
-    //       drive (Windows): `path.relative` returns an absolute string
-    //       when there's no relative way to express the link between two
-    //       paths on different roots. `path.isAbsolute(relative)` flags
-    //       that as an escape.
+    //   (4) After lexical resolve, the relative-path check catches
+    //       `..`-escape AND the case where the resolved path landed on a
+    //       different drive (Windows): `path.relative` returns an
+    //       absolute string when there's no relative way to express the
+    //       link between two paths on different roots.
+    //   (5) After symlink resolve (`realpath` on the deepest existing
+    //       prefix), the same relative-path check catches the case where
+    //       `workflowsDir` points at a symlink inside the config tree
+    //       whose target lands outside. The scanner and writer follow
+    //       symlinks via normal `readdir`/`readFile`/write calls, so
+    //       without this check a repo-controlled `ln -s ../../secrets wf`
+    //       + `workflowsDir: wf` would let `--write` rewrite files
+    //       outside the repo even though the lexical check passes.
     if (
       path.isAbsolute(config.workflowsDir) ||
       path.win32.isAbsolute(config.workflowsDir) ||
@@ -169,7 +215,7 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
       throw new Error(
         `Invalid ghau config in ${toPosixPath(result.filepath)}:\n` +
           `  workflowsDir: must be a path relative to the config file's directory; ` +
-          `got '${toPosixPath(config.workflowsDir)}'. ` +
+          `got '${normalizeForMessage(config.workflowsDir)}'. ` +
           `Use the --workflows CLI flag if you really need to point at an absolute path.`,
       );
     }
@@ -178,8 +224,31 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
     if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
       throw new Error(
         `Invalid ghau config in ${toPosixPath(result.filepath)}:\n` +
-          `  workflowsDir: '${toPosixPath(config.workflowsDir)}' resolves outside the config file's directory ` +
+          `  workflowsDir: '${normalizeForMessage(config.workflowsDir)}' resolves outside the config file's directory ` +
           `(${toPosixPath(resolved)}). Repo configs may only point at directories inside the repo.`,
+      );
+    }
+
+    // Symlink containment: also check the realpath. The lexical check above
+    // can't see through a symlink-pointing-outside, but `fs.realpath` does.
+    // We compute the "effective" realpath even when the target dir doesn't
+    // exist yet (see `realPathOfExistingPrefix`) so a fresh checkout still
+    // gets the safety guarantee, and we realpath `configDir` too so a repo
+    // that lives behind its own symlink doesn't false-positive.
+    const configRealDir = await realPathOfExistingPrefix(configDir);
+    const resolvedReal = await realPathOfExistingPrefix(resolved);
+    const realRelative = path.relative(configRealDir, resolvedReal);
+    if (
+      realRelative === '..' ||
+      realRelative.startsWith('..' + path.sep) ||
+      path.isAbsolute(realRelative)
+    ) {
+      throw new Error(
+        `Invalid ghau config in ${toPosixPath(result.filepath)}:\n` +
+          `  workflowsDir: '${normalizeForMessage(config.workflowsDir)}' resolves through a symlink to ` +
+          `${toPosixPath(resolvedReal)}, which is outside the config file's directory ` +
+          `(${toPosixPath(configRealDir)}). Repo configs may only point at directories inside the repo; ` +
+          `remove the offending symlink or pass --workflows on the CLI for an explicit absolute path.`,
       );
     }
     config.workflowsDir = resolved;
