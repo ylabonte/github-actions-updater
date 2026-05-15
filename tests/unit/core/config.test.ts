@@ -140,6 +140,19 @@ describe('loadConfig', () => {
     );
   });
 
+  it('rejects a Windows drive-relative `workflowsDir` (`C:foo`-style)', async () => {
+    // `path.isAbsolute('C:foo')` returns false on Windows because `C:foo`
+    // is drive-RELATIVE (resolves against the current dir on C:), yet
+    // `path.resolve(configDir, 'C:foo')` on Windows would land outside
+    // the config tree. We reject the form upfront via a regex check.
+    // POSIX runners pass this test too because we reject the literal
+    // shape regardless of platform — checked-in configs need to be portable.
+    await writeFile(path.join(cwd, '.ghaurc.json'), JSON.stringify({ workflowsDir: 'C:wf' }));
+    await expect(loadConfig(cwd)).rejects.toThrow(
+      /workflowsDir: must be a path relative to the config file's directory/,
+    );
+  });
+
   it("rejects a `workflowsDir` that escapes the config file's directory via `..`", async () => {
     // Same threat model: an attacker controlling the config could use a
     // `..`-traversing relative path to escape the repo (or the configured

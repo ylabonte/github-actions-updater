@@ -134,20 +134,39 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
   const config: GhauConfig = parsed.data;
   if (config.workflowsDir !== undefined) {
     const configDir = path.dirname(result.filepath);
-    if (path.isAbsolute(config.workflowsDir)) {
+
+    // Two pre-resolve checks plus a post-resolve check, in this order. None
+    // is redundant; each catches a class the others miss:
+    //
+    //   (1) `path.isAbsolute` catches POSIX absolutes (`/etc/foo`) and
+    //       Windows drive-absolutes (`C:\foo`).
+    //   (2) `/^[A-Za-z]:/` catches Windows drive-RELATIVE paths (`C:foo`,
+    //       `D:foo`), which `path.isAbsolute` returns `false` for despite
+    //       being drive-qualified — `path.resolve` would then resolve them
+    //       against the current working dir on the named drive, landing
+    //       outside the config tree. We reject this form even on POSIX
+    //       (where `C:foo` is technically a valid dirname) because configs
+    //       are checked in and must be portable.
+    //   (3) After resolve, the relative-path check catches `..`-escape
+    //       AND the case where the resolved path landed on a different
+    //       drive (Windows): `path.relative` returns an absolute string
+    //       when there's no relative way to express the link between two
+    //       paths on different roots. `path.isAbsolute(relative)` flags
+    //       that as an escape.
+    if (path.isAbsolute(config.workflowsDir) || /^[A-Za-z]:/.test(config.workflowsDir)) {
       throw new Error(
         `Invalid ghau config in ${toPosixPath(result.filepath)}:\n` +
           `  workflowsDir: must be a path relative to the config file's directory; ` +
-          `got absolute path '${config.workflowsDir}'. ` +
+          `got '${toPosixPath(config.workflowsDir)}'. ` +
           `Use the --workflows CLI flag if you really need to point at an absolute path.`,
       );
     }
     const resolved = path.resolve(configDir, config.workflowsDir);
     const relative = path.relative(configDir, resolved);
-    if (relative === '..' || relative.startsWith('..' + path.sep)) {
+    if (relative === '..' || relative.startsWith('..' + path.sep) || path.isAbsolute(relative)) {
       throw new Error(
         `Invalid ghau config in ${toPosixPath(result.filepath)}:\n` +
-          `  workflowsDir: '${config.workflowsDir}' resolves outside the config file's directory ` +
+          `  workflowsDir: '${toPosixPath(config.workflowsDir)}' resolves outside the config file's directory ` +
           `(${toPosixPath(resolved)}). Repo configs may only point at directories inside the repo.`,
       );
     }
