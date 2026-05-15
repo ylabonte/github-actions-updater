@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -140,16 +140,31 @@ describe('loadConfig', () => {
     );
   });
 
-  it('rejects a Windows-rooted `workflowsDir` even when loading on POSIX', async () => {
+  it('rejects a UNC `workflowsDir` (`\\\\server\\share`) even when loading on POSIX', async () => {
     // `path.isAbsolute('\\\\server\\share')` returns false on POSIX, so the
     // native check alone would miss it. We additionally use
-    // `path.win32.isAbsolute` to reject Windows-absolute forms (UNC paths,
-    // backslash-rooted) regardless of the platform the config is loaded
-    // on — checked-in configs need to be portable, and the same value
-    // would be a real escape on a Windows runner.
+    // `path.win32.isAbsolute` to reject Windows-absolute forms regardless
+    // of the platform the config is loaded on — checked-in configs need to
+    // be portable, and the same value would be a real escape on a Windows
+    // runner.
     await writeFile(
       path.join(cwd, '.ghaurc.json'),
       JSON.stringify({ workflowsDir: String.raw`\\server\share` }),
+    );
+    await expect(loadConfig(cwd)).rejects.toThrow(
+      /workflowsDir: must be a path relative to the config file's directory/,
+    );
+  });
+
+  it('rejects a single-backslash-rooted `workflowsDir` (`\\wf`) even when loading on POSIX', async () => {
+    // UNC and single-backslash-rooted are two distinct Windows-absolute
+    // forms; a `path.win32.isAbsolute` regression that only handled one
+    // would leave the other reachable. Cover both independently so a future
+    // change to either branch fails its own test rather than hiding behind
+    // the other's coverage.
+    await writeFile(
+      path.join(cwd, '.ghaurc.json'),
+      JSON.stringify({ workflowsDir: String.raw`\wf` }),
     );
     await expect(loadConfig(cwd)).rejects.toThrow(
       /workflowsDir: must be a path relative to the config file's directory/,
@@ -203,6 +218,48 @@ describe('loadConfig', () => {
     );
     const result = await loadConfig(cwd);
     expect(result?.config.workflowsDir).toBe(path.resolve(cwd, 'wf'));
+  });
+
+  it('rejects a `workflowsDir` whose realpath (via symlink) escapes the config tree', async () => {
+    // The lexical containment check (relative path against configDir) can't
+    // see through symlinks. A repo-controlled config could include a
+    // `workflowsDir` whose value is a relative path inside the repo but
+    // whose target resolves outside via a symlink. Without the realpath
+    // check, scanner+writer would follow the symlink and read/write files
+    // outside the repo. This test pins that the realpath escape is detected.
+    const outside = await mkdtemp(path.join(tmpdir(), 'ghau-symlink-outside-'));
+    try {
+      await symlink(outside, path.join(cwd, 'wf'));
+      await writeFile(path.join(cwd, '.ghaurc.json'), JSON.stringify({ workflowsDir: 'wf' }));
+      await expect(loadConfig(cwd)).rejects.toThrow(/resolves through a symlink/);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('accepts a `workflowsDir` whose symlink target stays inside the config tree', async () => {
+    // Symmetric to the rejection test: an in-tree symlink (e.g. `wf` →
+    // `actual/`, where `actual/` is inside `configDir`) is allowed. This
+    // guards against the realpath check being so strict it rejects normal
+    // repos that happen to use symlinks for organization.
+    await mkdir(path.join(cwd, 'actual'), { recursive: true });
+    await symlink(path.join(cwd, 'actual'), path.join(cwd, 'wf'));
+    await writeFile(path.join(cwd, '.ghaurc.json'), JSON.stringify({ workflowsDir: 'wf' }));
+    const result = await loadConfig(cwd);
+    expect(result?.config.workflowsDir).toBe(path.resolve(cwd, 'wf'));
+  });
+
+  it('formats Windows-form rejection values with forward slashes in the error message', async () => {
+    // The user-facing error embeds the rejected value. `toPosixPath` only
+    // swaps the native separator, so on POSIX a Windows-form value would
+    // print with literal backslashes — confusing for a "use a relative
+    // path" message that's specifically calling out a portability issue.
+    // Verify the value comes out POSIX-normalized regardless of host OS.
+    await writeFile(
+      path.join(cwd, '.ghaurc.json'),
+      JSON.stringify({ workflowsDir: String.raw`C:\wf` }),
+    );
+    await expect(loadConfig(cwd)).rejects.toThrow(/'C:\/wf'/);
   });
 
   it('rejects a config with an unknown key', async () => {

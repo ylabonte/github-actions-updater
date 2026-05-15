@@ -12,7 +12,12 @@ export default defineConfig({
       exclude: [
         'src/**/*.d.ts',
         'src/**/index.ts',
-        'src/cli.ts', // exercised via integration tests; entrypoint is thin
+        // NOTE: src/cli.ts is intentionally NOT excluded — it hosts unit-tested
+        // logic (`buildProgram`, `mergeOptions`, `isInvokedDirectly`) that
+        // should count toward the threshold. The integration-only parts of the
+        // file (`main`, `runCommit`, the bootstrap line) carry `c8 ignore`
+        // markers so they don't drag the file's coverage down; see the file
+        // itself for the rationale.
       ],
       thresholds: {
         lines: 90,

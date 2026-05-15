@@ -101,6 +101,12 @@ export function mergeOptions(program: ReturnType<typeof buildProgram>, config: G
   };
 }
 
+/* c8 ignore start — `main` is integration-tested via subprocess spawns in
+ * `tests/integration/cli.test.ts` (coverage doesn't follow into subprocesses);
+ * unit-testing it would require mocking GitHub/Docker/auth and inverts the
+ * cost/value tradeoff. The pure pieces it composes (`buildProgram`,
+ * `mergeOptions`, `isInvokedDirectly`) have their own unit tests and DO count
+ * toward the threshold. */
 export async function main(argv: readonly string[]): Promise<number> {
   const program = buildProgram();
   await program.parseAsync(argv, { from: 'user' });
@@ -231,6 +237,7 @@ async function runCommit(applied: readonly Resolution[], noEdit = false): Promis
     process.stderr.write(pc.yellow(`⚠ Skipped commit: ${result.reason}\n`));
   }
 }
+/* c8 ignore stop */
 
 /**
  * True when this module was invoked as a script (vs. imported by tests).
@@ -263,11 +270,15 @@ export function isInvokedDirectly(metaUrl: string, entryPath: string | undefined
   }
 }
 
+/* c8 ignore start — bootstrap shim runs only when this module is the process
+ * entrypoint; integration tests spawn it as a subprocess, so coverage doesn't
+ * follow. The `isInvokedDirectly` predicate it depends on is unit-tested. */
 if (isInvokedDirectly(import.meta.url, process.argv[1])) {
   void main(process.argv.slice(2)).then((code) => {
     process.exit(code);
   });
 }
+/* c8 ignore stop */
 
 // Re-export the check pipeline for programmatic use.
 

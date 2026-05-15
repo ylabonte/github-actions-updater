@@ -19,7 +19,7 @@ interface GhauConfig {
 }
 ```
 
-Relative `workflowsDir` values are resolved against the config file's directory (not `process.cwd()`), so a repo-level `.ghaurc.json` keeps pointing at `<repo-root>/.github/workflows` regardless of which subdirectory inside the repo you invoke `ghau` from. **Containment is enforced** — a `workflowsDir` that is absolute or that resolves outside the config file's directory (via `..`-traversal) is rejected at load time. Repo-controlled configs can therefore only point at directories inside the repo; operators who legitimately need an absolute path can still pass `--workflows` on the CLI.
+Relative `workflowsDir` values are resolved against the config file's directory (not `process.cwd()`), so a repo-level `.ghaurc.json` keeps pointing at `<repo-root>/.github/workflows` regardless of which subdirectory inside the repo you invoke `ghau` from. **Containment is enforced** — a `workflowsDir` that is absolute (any platform-recognized form, including Windows drive-absolute and UNC even on POSIX), that resolves outside the config file's directory via `..`-traversal, or whose realpath escapes the config tree through a symlink is rejected at load time. Repo-controlled configs can therefore only point at directories inside the repo; operators who legitimately need an absolute path can still pass `--workflows` on the CLI.
 
 Rationale: a checked-in config is reachable by anyone who can land a PR, and — in `--write` mode — steering the YAML rewriter outside the repo would be a real attack vector. The validation closes that vector before the scanner ever opens a file.
 
