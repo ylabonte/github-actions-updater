@@ -20,8 +20,8 @@
  *
  * Users who need typed/dynamic configs in v1.1.0 should generate JSON at
  * build time. A future minor may add an explicit opt-in for executable
- * formats with appropriate CI safeguards; track [issue link] if you have a
- * use case.
+ * formats with appropriate CI safeguards — file an issue on the repo if
+ * you have a use case.
  *
  * Schema validation rejects unknown keys and bad shapes with a single `Error`
  * message that lists every offending field. CLI flags override config values;

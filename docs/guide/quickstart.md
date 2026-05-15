@@ -37,11 +37,11 @@ You'll get a colored table:
 
 Exit codes:
 
-| Code | When                                                                                                           |
-| ---- | -------------------------------------------------------------------------------------------------------------- |
-| `0`  | The scan ran. Outdated entries do **not** fail by default — opt in with `--fail-on-outdated` for CI gating.    |
-| `1`  | At least one resolution errored (partial failure), or `--fail-on-outdated` was set and outdated entries exist. |
-| `2`  | Every resolution errored — usually rate limiting, auth, or network.                                            |
+| Code | When                                                                                                                              |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `0`  | The scan ran. Outdated entries do **not** fail by default — opt in with `--fail-on-outdated` for CI gating.                       |
+| `1`  | At least one resolution errored (partial failure), or `--fail-on-outdated` was set and outdated entries exist.                    |
+| `2`  | Fatal: every resolution errored (usually rate limiting, auth, or network), **or** a malformed config file was found and rejected. |
 
 ## Apply updates
 
