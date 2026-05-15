@@ -31,10 +31,26 @@ describe('loadConfig', () => {
     expect(result?.filepath).toBe(path.join(cwd, '.ghaurc.json'));
   });
 
-  it('loads `.ghaurc` (cosmiconfig auto-detects JSON/YAML)', async () => {
+  it('loads `.ghaurc` with JSON content (cosmiconfig auto-detects)', async () => {
     await writeFile(path.join(cwd, '.ghaurc'), JSON.stringify({ target: 'patch' }));
     const result = await loadConfig(cwd);
     expect(result?.config).toEqual({ target: 'patch' });
+  });
+
+  it('loads `.ghaurc` with YAML content (cosmiconfig auto-detects)', async () => {
+    // Same filename as the previous test, but written as YAML. cosmiconfig
+    // tries the JSON loader first and falls back to YAML, so this exercises
+    // the no-extension YAML path independently of the JSON path.
+    await writeFile(
+      path.join(cwd, '.ghaurc'),
+      'target: patch\nallowBranchPin: true\nrejects:\n  - "docker://**"\n',
+    );
+    const result = await loadConfig(cwd);
+    expect(result?.config).toEqual({
+      target: 'patch',
+      allowBranchPin: true,
+      rejects: ['docker://**'],
+    });
   });
 
   it('loads `.ghaurc.yaml`', async () => {
@@ -139,6 +155,16 @@ describe('loadConfig', () => {
     await writeFile(path.join(cwd, '.ghaurc.json'), JSON.stringify({}));
     const result = await loadConfig(cwd);
     expect(result?.config).toEqual({});
+  });
+
+  it('rethrows cosmiconfig parser errors (malformed JSON) with POSIX-normalized paths', async () => {
+    // cosmiconfig's parser throws BEFORE we get to schema validation; the
+    // error from the JSON loader includes the native filepath, which can
+    // contain backslashes on Windows. The wrapper rethrows with backslashes
+    // replaced so the message is stable cross-platform.
+    await writeFile(path.join(cwd, '.ghaurc.json'), '{ not valid json');
+    await expect(loadConfig(cwd)).rejects.toThrow(/Invalid ghau config/);
+    await expect(loadConfig(cwd)).rejects.toThrow(/^[^\\]+$/);
   });
 
   it('uses POSIX path separators in error messages even on Windows-style native paths', async () => {
