@@ -35,11 +35,17 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
       - uses: pnpm/action-setup@v6
+      # Do NOT pass `registry-url:` to setup-node. It writes an `.npmrc` with
+      # `//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}`; npm 11 then sees
+      # a token entry (empty, because we don't set NODE_AUTH_TOKEN — we want
+      # OIDC) and skips the trusted-publisher exchange, so `npm publish` 4xx's
+      # and `changeset publish` exits 1. Trusted publishing only kicks in when
+      # *no* token is configured. Default registry is registry.npmjs.org, so
+      # dropping `registry-url:` costs nothing.
       - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
-          registry-url: https://registry.npmjs.org
       # npm 11.5+ is required for trusted-publishing OIDC. Node 20 ships with npm 10.
       - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
