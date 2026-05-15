@@ -40,7 +40,7 @@ inputs:
     # Default is left literally empty (rather than `.github/workflows`) so the
     # CLI remains the single source of truth for the default path. The
     # description spells out the effective default for the Marketplace UI.
-    description: 'Workflows directory to scan. When empty (the default) the CLI uses `.github/workflows`; override to point at a non-standard location such as a monorepo subpackage root.'
+    description: 'Workflows directory to scan. When empty (the default) the CLI uses its own default (`.github/workflows`) unless a repo config file sets `workflowsDir`; set explicitly to force a value over any config (e.g. for a monorepo subpackage root).'
     required: false
     default: ''
   write:
