@@ -29,7 +29,8 @@ Rationale: a checked-in config is reachable by anyone who can land a PR, and —
 
 To make the config-file precedence work end-to-end when the tool runs as a composite Action, several Action inputs gained new "defer to config" semantics:
 
-- **`target` and `workflows` inputs** now default to empty strings (previously `'latest'` and `'.github/workflows'` respectively). When empty, the Action skips the corresponding `--target` / `--workflows` flag on the CLI invocation entirely, so the CLI honors the config file's value (or its own built-in default if no config). Set the inputs explicitly to force a value over any config — useful when you want a hard CI guarantee.
+- **`target` input default changed** from `'latest'` to an empty string. When omitted, the Action no longer forces `--target latest` on the CLI; the CLI then honors a `target` value from a repo config file (or falls through to its own built-in `latest` default if no config). Set the input explicitly to force a value over any config.
+- **`workflows` input behavior clarified.** The input itself already defaulted to an empty string in 1.0.0; what's new is that an empty value now lets the CLI honor `workflowsDir` from a repo config file (previously it just fell through to the CLI's built-in `.github/workflows`). The Action's metadata description has been updated to reflect this; no Action-input default change.
 - **`allow-branch-pin` and `fail-on-outdated` inputs** are now tri-state. Empty (the new default) defers to the config; `'true'` appends the positive CLI flag; `'false'` appends a new negative CLI flag (`--no-allow-branch-pin` / `--no-fail-on-outdated`) so a one-off run can override a config-set `true` back to `false` without editing the config.
 
 The new CLI flags `--no-allow-branch-pin` and `--no-fail-on-outdated` are also available directly for non-Action invocations.

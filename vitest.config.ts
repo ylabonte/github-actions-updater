@@ -12,7 +12,6 @@ export default defineConfig({
       exclude: [
         'src/**/*.d.ts',
         'src/**/index.ts',
-        'src/core/types.ts', // types-only module, no executable code
         'src/cli.ts', // exercised via integration tests; entrypoint is thin
       ],
       thresholds: {
