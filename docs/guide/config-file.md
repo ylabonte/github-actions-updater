@@ -20,11 +20,19 @@ In order of precedence within the same directory:
 - `ghau.config.js`
 - `ghau.config.cjs`
 - `ghau.config.mjs`
-- `ghau.config.ts`
 - `ghau.config.json`
 
 If no config file is found, `ghau` runs with built-in defaults — the same as
 before config-file support landed.
+
+::: info Why no `.ts`?
+cosmiconfig v9 (what we use) doesn't ship a TypeScript loader; adding one
+would require a runtime transpilation dependency (`jiti` or
+`cosmiconfig-typescript-loader`). For type-safety, write your config as
+`ghau.config.mjs` and use `defineConfig` — TypeScript-aware editors will
+infer types via JSDoc/`@ts-check` against the package's exported types.
+If there's demand for native `.ts` support, file an issue.
+:::
 
 ## Schema
 
@@ -60,12 +68,14 @@ the same exit code used for fatal scan errors.
 }
 ```
 
-### Typed config via `ghau.config.ts`
+### Typed config via `ghau.config.mjs`
 
-The package exports a `defineConfig` helper for type-safety:
+The package exports a `defineConfig` helper that gives editor hints in
+TypeScript-aware setups (including JS-with-`@ts-check`):
 
-```ts
-// ghau.config.ts
+`ghau.config.mjs`:
+
+```js
 import { defineConfig } from 'github-actions-updater';
 
 export default defineConfig({

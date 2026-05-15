@@ -4,7 +4,7 @@
 
 Add config-file support via cosmiconfig.
 
-Repo-level defaults can now live in a config file at the repo root — a `ghau` key in `package.json`, `.ghaurc[.json|.yaml|.yml|.js|.cjs|.mjs]`, `ghau.config.[js|cjs|mjs|ts|json]`. CLI flags override config values; config values override built-in defaults. Tokens are deliberately _not_ loadable from config — they belong in env vars or `gh auth token`.
+Repo-level defaults can now live in a config file at the repo root — a `ghau` key in `package.json`, `.ghaurc[.json|.yaml|.yml|.js|.cjs|.mjs]`, `ghau.config.[js|cjs|mjs|json]`. CLI flags override config values; config values override built-in defaults. Tokens are deliberately _not_ loadable from config — they belong in env vars or `gh auth token`.
 
 Schema (validated by zod; unknown keys are rejected):
 
@@ -19,10 +19,10 @@ interface GhauConfig {
 }
 ```
 
-The package also exports a `defineConfig` helper for TypeScript users:
+The package also exports a `defineConfig` helper for editor hints in `.mjs` configs (works in JS-with-`@ts-check` too):
 
-```ts
-// ghau.config.ts
+```js
+// ghau.config.mjs
 import { defineConfig } from 'github-actions-updater';
 
 export default defineConfig({

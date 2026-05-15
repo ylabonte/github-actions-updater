@@ -50,10 +50,11 @@ Exit codes:
 
 ## Configuration
 
-Repo-level defaults can live in a config file (`.ghaurc.json`, `ghau.config.ts`, a `ghau` key in `package.json`, and several other shapes). CLI flags override the config; the config overrides built-in defaults.
+Repo-level defaults can live in a config file (`.ghaurc.json`, `ghau.config.mjs`, a `ghau` key in `package.json`, and several other shapes). CLI flags override the config; the config overrides built-in defaults.
+
+`.ghaurc.json`:
 
 ```json
-// .ghaurc.json
 {
   "target": "minor",
   "rejects": ["docker://**"],
@@ -81,7 +82,7 @@ Pair it with [`peter-evans/create-pull-request`](https://github.com/peter-evans/
 | Name               | Default             | Description                                                                                                                                                                                                                                       |
 | ------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `version`          | `1`                 | npm tag or version of `github-actions-updater` to run via `npx`. Defaults to the action's own major (so `@v1` won't silently jump to a future `2.x` CLI). Override to pin tighter (`'1.2.3'`) or to opt into floating across majors (`'latest'`). |
-| `target`           | `latest`            | Update target policy: `latest`, `major`, `minor`, `patch`, `greatest`.                                                                                                                                                                            |
+| `target`           | _(none)_            | Update target policy: `latest`, `major`, `minor`, `patch`, `greatest`. When empty (the default) the CLI uses its own default (`latest`) unless a repo config file overrides it — set explicitly to force a value over any config.                 |
 | `filter`           | _(none)_            | Space-separated globs of action names to include (e.g. `actions/*`).                                                                                                                                                                              |
 | `reject`           | _(none)_            | Space-separated globs of action names to exclude (e.g. `docker://**`).                                                                                                                                                                            |
 | `workflows`        | `.github/workflows` | Override the workflows directory.                                                                                                                                                                                                                 |

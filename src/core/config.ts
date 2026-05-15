@@ -1,13 +1,19 @@
 /**
  * Config file loading via cosmiconfig.
  *
- * Supported locations (cosmiconfig defaults plus the `ghau.config.*` family):
+ * Supported locations:
  *
  * - `package.json` `"ghau"` field
  * - `.ghaurc`, `.ghaurc.json`, `.ghaurc.yaml`, `.ghaurc.yml`
  * - `.ghaurc.js`, `.ghaurc.cjs`, `.ghaurc.mjs`
- * - `ghau.config.js`, `ghau.config.cjs`, `ghau.config.mjs`, `ghau.config.ts`
+ * - `ghau.config.js`, `ghau.config.cjs`, `ghau.config.mjs`
  * - `ghau.config.json`
+ *
+ * `.ts` is intentionally **not** in this list. cosmiconfig 9 doesn't ship a
+ * TypeScript loader; adding one would require a runtime transpilation dep
+ * (jiti/typescript-loader/etc.) for a use case the `.mjs` path already serves
+ * adequately for typed configs via `defineConfig`. Revisit if there's
+ * demand.
  *
  * Schema validation rejects unknown keys and bad shapes with a single `Error`
  * message that lists every offending field. CLI flags override config values;
@@ -60,7 +66,6 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
       'ghau.config.js',
       'ghau.config.cjs',
       'ghau.config.mjs',
-      'ghau.config.ts',
       'ghau.config.json',
     ],
   });

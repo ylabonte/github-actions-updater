@@ -18,9 +18,15 @@ inputs:
     required: false
     default: '1'
   target:
-    description: 'Update target policy: latest, major, minor, patch, greatest.'
+    # Default is left literally empty (rather than `latest`) so a `target`
+    # value in a repo's `.ghaurc` / `ghau.config.*` is not silently masked by
+    # the Action's pass-through. When empty, the script below skips `--target`
+    # entirely and the CLI picks its own default (`latest`) or the config file's
+    # value, whichever is set. The description spells out the effective default
+    # for the Marketplace UI.
+    description: 'Update target policy: `latest`, `major`, `minor`, `patch`, `greatest`. When empty (the default) the CLI uses its own default (`latest`) unless a repo config file overrides it.'
     required: false
-    default: latest
+    default: ''
   filter:
     description: 'Space-separated globs of action names to include (e.g. "actions/*").'
     required: false
@@ -113,7 +119,13 @@ runs:
         # the template expression syntax, so action-name globs and similar attacker-
         # controllable values can't be shell-parsed. Each value is then pushed onto an
         # args array so npx receives them as separate argv entries — no shell re-parsing.
-        args=(--json --target "$GHAU_TARGET")
+        args=(--json)
+
+        # `--target` is conditional so a `target` value in the user's repo config
+        # (`.ghaurc` / `ghau.config.*`) is not masked by the Action's pass-through.
+        # When the input is empty, we let the CLI fall back to its own default or
+        # the config file's value, whichever is set.
+        [[ -n "$GHAU_TARGET" ]] && args+=(--target "$GHAU_TARGET")
 
         # `read -r -a` word-splits on IFS without invoking pathname expansion. An
         # earlier `extra=($GHAU_FILTER)` would have let `actions/*` glob against the
