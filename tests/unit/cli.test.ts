@@ -52,6 +52,15 @@ describe('mergeOptions — defaulted Commander options', () => {
     expect(merged.allowBranchPin).toBe(true);
   });
 
+  it('CLI --no-allow-branch-pin overrides config `allowBranchPin: true` (one-off disable)', async () => {
+    // The reverse direction: without the negative-form CLI flag, a config-set true
+    // would be impossible to override back to false for a single invocation. The
+    // negative form makes the documented "CLI > config" precedence work both ways.
+    const program = await parse(['--no-allow-branch-pin']);
+    const merged = mergeOptions(program, { allowBranchPin: true });
+    expect(merged.allowBranchPin).toBe(false);
+  });
+
   it('config `failOnOutdated: true` wins when --fail-on-outdated is not on CLI', async () => {
     const program = await parse([]);
     const merged = mergeOptions(program, { failOnOutdated: true });
@@ -62,6 +71,12 @@ describe('mergeOptions — defaulted Commander options', () => {
     const program = await parse(['--fail-on-outdated']);
     const merged = mergeOptions(program, { failOnOutdated: false });
     expect(merged.failOnOutdated).toBe(true);
+  });
+
+  it('CLI --no-fail-on-outdated overrides config `failOnOutdated: true` (one-off disable)', async () => {
+    const program = await parse(['--no-fail-on-outdated']);
+    const merged = mergeOptions(program, { failOnOutdated: true });
+    expect(merged.failOnOutdated).toBe(false);
   });
 });
 

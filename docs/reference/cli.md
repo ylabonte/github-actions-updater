@@ -25,6 +25,8 @@ Options:
   --token <token>         GitHub token (overrides env / gh CLI)
   --allow-branch-pin      on --write, convert branch refs to pinned SHAs
                           (default: false)
+  --no-allow-branch-pin   disable branch-to-SHA pinning even if a config file
+                          set `allowBranchPin: true`
   --commit                after --write or --interactive: stage the changed
                           workflow files and open `git commit -v` with a
                           pre-filled message (default: false)
@@ -33,6 +35,8 @@ Options:
                           not a TTY)
   --fail-on-outdated      exit 1 when outdated entries are found (default: exit
                           0 unless an actual error occurred) (default: false)
+  --no-fail-on-outdated   disable fail-on-outdated even if a config file set
+                          `failOnOutdated: true` (one-off CLI invocations)
   -v, --verbose           verbose logging (default: false)
   -h, --help              display help for command
 ```

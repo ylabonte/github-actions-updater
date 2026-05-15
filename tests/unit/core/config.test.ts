@@ -78,9 +78,10 @@ describe('loadConfig', () => {
   it('does NOT load executable formats (`.js`, `.mjs`, `.cjs`)', async () => {
     // Defense in depth: even if cosmiconfig's default loaders or a future
     // change re-enabled these, our explicit `searchPlaces` list omits them.
-    // A `.js` file with a valid config shape next to no other config file
-    // should produce a `null` result, because we never look for `.js`.
+    // All three executable extensions have a fixture so the test name's
+    // promise is honored by what's on disk.
     await writeFile(path.join(cwd, 'ghau.config.js'), "module.exports = { target: 'major' };\n");
+    await writeFile(path.join(cwd, '.ghaurc.cjs'), "module.exports = { target: 'major' };\n");
     await writeFile(path.join(cwd, '.ghaurc.mjs'), "export default { target: 'major' };\n");
     const result = await loadConfig(cwd);
     expect(result).toBeNull();

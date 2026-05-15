@@ -46,6 +46,10 @@ export function buildProgram() {
     .option('--token <token>', 'GitHub token (overrides env / gh CLI)')
     .option('--allow-branch-pin', 'on --write, convert branch refs to pinned SHAs', false)
     .option(
+      '--no-allow-branch-pin',
+      'disable branch-to-SHA pinning even if a config file set `allowBranchPin: true`',
+    )
+    .option(
       '--commit',
       'after --write or --interactive: stage the changed workflow files and open `git commit -v` with a pre-filled message',
       false,
@@ -58,6 +62,10 @@ export function buildProgram() {
       '--fail-on-outdated',
       'exit 1 when outdated entries are found (default: exit 0 unless an actual error occurred)',
       false,
+    )
+    .option(
+      '--no-fail-on-outdated',
+      'disable fail-on-outdated even if a config file set `failOnOutdated: true` (one-off CLI invocations)',
     )
     .option('-v, --verbose', 'verbose logging', false);
 }
