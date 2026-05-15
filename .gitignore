@@ -1,7 +1,7 @@
 node_modules/
 dist/
 coverage/
-.claude/settings.local.json
+.claude/
 .DS_Store
 *.log
 .env
