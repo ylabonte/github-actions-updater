@@ -72,6 +72,20 @@ ghau -i
 
 A checkbox UI lets you pick which updates to apply. Deselected entries are left untouched.
 
+## Repo-level defaults
+
+If you keep typing the same flags (`--target minor`, `--reject docker://**`, etc.), drop them into a config file at the repo root once:
+
+```json
+// .ghaurc.json
+{
+  "target": "minor",
+  "rejects": ["docker://**"]
+}
+```
+
+`ghau` picks it up automatically. CLI flags still win when you pass them explicitly. See the [config-file guide](./config-file) for the full schema and other supported shapes (`ghau.config.ts` with typed `defineConfig`, a `ghau` key in `package.json`, etc.).
+
 ## Authentication
 
 By default `ghau` tries, in order:
