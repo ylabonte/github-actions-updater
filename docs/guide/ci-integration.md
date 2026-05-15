@@ -46,7 +46,7 @@ Exit codes:
 
 - `0` — scan ran; outdated entries (if any) do not fail unless `--fail-on-outdated` is set.
 - `1` — partial failure (one or more resolutions errored), or `--fail-on-outdated` set and entries were outdated.
-- `2` — every resolution errored (usually rate limiting / auth / network).
+- `2` — fatal: every resolution errored (usually rate limiting / auth / network), or a malformed config file was found and rejected.
 
 ## JSON output
 

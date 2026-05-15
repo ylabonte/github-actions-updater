@@ -65,7 +65,7 @@ Before committing, `grep -n` the identifier across the repo. If it's named in th
 
 - **Reference styles:** `@v4` (floating major), `@v4.1` (floating minor), `@v4.1.1` (exact), `@<sha> # v4.1.1` (SHA-pinned with required version comment), `@main` (branch — mutable), `docker://image:tag`. Local refs (`./...`) are skipped.
 - **Floating partial tags are pre-resolved.** `@v4` is functionally "latest `v4.x.y`"; don't flag within-major bumps as outdated. See `src/core/comparator.ts::classifyDiff`.
-- **Exit codes:** `0` = scan ran (outdated entries don't fail by default), `1` = error or `--fail-on-outdated`+stale, `2` = every resolution errored. Default-0 is deliberate.
+- **Exit codes:** `0` = scan ran (outdated entries don't fail by default), `1` = error or `--fail-on-outdated`+stale, `2` = every resolution errored OR malformed config rejected. Default-0 is deliberate.
 - **Display glyphs:** `✓` (U+2713) for up-to-date, `⚠` (U+26A0) for errors. Not the emoji versions (skews table).
 - **Color:** `picocolors`. **Table:** `cli-table3`. **Prompts:** `@clack/prompts`. Don't add chalk/inquirer.
 
@@ -86,6 +86,9 @@ Before committing, `grep -n` the identifier across the repo. If it's named in th
 - Unborn-branch git ops: `git rev-parse HEAD` is empty. Code paths diffing HEAD before/after need a `git diff-tree --root <after>` fallback when the "before" is empty.
 - `git diff -- '*.yml'` matches basenames across the entire tree. Scope to a directory: `git diff -- "$dir/*.yml" "$dir/*.yaml"`.
 - npm package specs accept tarball URLs, git URLs, file paths, and `npm:other-pkg@...` aliases. Allowlist user-controlled values (e.g. `^[A-Za-z0-9][A-Za-z0-9._+-]*$`) before passing to `npx`.
+- Workflow-command injection: any `::name::value` line (`::error::`, `::warning::`, etc.) interpolating attacker-controllable input lets a value containing CR/LF inject extra commands. Escape `%`, CR, LF before interpolating (`%25`/`%0D`/`%0A`, percent first). See `gha_escape()` in `action.yml`.
+- When updating an exit-code or invariant description, grep the OLD wording across `docs/`, `CLAUDE.md`, this file, and the CI guide. Stale wording is the strongest signal of where the contract is documented.
+- Precedence claims need both directions tested at every layer. "CLI > config" is only true if you can also flip CLI back to `false` over a config `true` (negative `--no-*` flag) AND the composite Action's tri-state input forwards that choice.
 
 ## Useful commands
 

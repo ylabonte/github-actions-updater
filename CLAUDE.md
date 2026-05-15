@@ -234,11 +234,11 @@ Two anti-patterns from past sessions:
 
 ### CLI exit codes
 
-| Code | When                                                                                      |
-| ---- | ----------------------------------------------------------------------------------------- |
-| `0`  | Scan ran. Outdated entries do **not** fail by default.                                    |
-| `1`  | A resolution errored (partial), or `--fail-on-outdated` was set and entries are outdated. |
-| `2`  | Every resolution errored — usually auth or network.                                       |
+| Code | When                                                                                                          |
+| ---- | ------------------------------------------------------------------------------------------------------------- |
+| `0`  | Scan ran. Outdated entries do **not** fail by default.                                                        |
+| `1`  | A resolution errored (partial), or `--fail-on-outdated` was set and entries are outdated.                     |
+| `2`  | Fatal: every resolution errored (usually auth or network), or a malformed config file was found and rejected. |
 
 The default-0 is deliberate — see the changeset for `--fail-on-outdated`. Don't revert.
 
@@ -409,6 +409,31 @@ Rules:
   (`npm:other-pkg@...`) — all of which override the package name and execute
   arbitrary code. Validate any user-controlled `<spec>` against a tight allowlist
   (e.g. `^[A-Za-z0-9][A-Za-z0-9._+-]*$`) before passing to `npx`.
+- **Workflow-command injection via interpolated input.** Any `::name::value`
+  workflow command in a bash `run:` block (`::error::`, `::warning::`,
+  `::notice::`, `::add-mask::`, etc.) that interpolates attacker-controllable
+  input is an injection vector. A value containing CR (`%0D`) or LF (`%0A`)
+  ends the current workflow command and starts the next line as a new one — so
+  e.g. `x%0A::error::injected` emits a fake error log line. Escape `%`, CR, LF
+  before interpolating (encode `%` _first_ since the others' encodings use `%`).
+  We ship a `gha_escape()` helper in `action.yml`; reuse the same pattern for
+  any future `::*::` line that touches user input.
+- **The "Documentation surfaces" lens itself drifts.** Round 6 of PR #13 caught
+  that we'd updated the README/cli.md/quickstart exit-code tables for a new
+  exit-2 case but forgotten three more surfaces (CLAUDE.md, copilot
+  instructions, ci-integration.md). The lens lives in this file, doesn't itself
+  enumerate every place an invariant might appear. When updating a contract,
+  also `grep -rn` for the OLD wording across `docs/`, `CLAUDE.md`, and
+  `.github/copilot-instructions.md` — stale wordings are the strongest signal
+  of where the contract lives.
+- **Documented invariants need bidirectional verification.** A precedence claim
+  like "CLI flag > config file" is symmetric only if BOTH directions work.
+  Round 4–5 caught that boolean configs (`allowBranchPin`, `failOnOutdated`)
+  could not be overridden from true back to false from the CLI (no `--no-*`
+  flag) nor from the composite Action (default `'false'` indistinguishable from
+  omitted). Whenever you ship a precedence/override invariant, write the test
+  for both directions, and verify each layer the contract crosses (Action input
+  → CLI flag → config) honors the rule in both directions.
 
 ## Useful commands
 
