@@ -66,6 +66,16 @@ describe('loadConfig', () => {
     });
   });
 
+  it('loads `.ghaurc.yml` (the alias-extension form)', async () => {
+    // `.yml` is in `searchPlaces` alongside `.yaml`; the previous test only
+    // exercised the `.yaml` form. This fixture ensures a regression in
+    // either loader path or in `searchPlaces` removes ONE of the documented
+    // filenames loudly rather than silently dropping `.yml` support.
+    await writeFile(path.join(cwd, '.ghaurc.yml'), 'target: patch\nfailOnOutdated: true\n');
+    const result = await loadConfig(cwd);
+    expect(result?.config).toEqual({ target: 'patch', failOnOutdated: true });
+  });
+
   it('loads `ghau.config.json`', async () => {
     await writeFile(path.join(cwd, 'ghau.config.json'), JSON.stringify({ filters: ['actions/*'] }));
     const result = await loadConfig(cwd);
