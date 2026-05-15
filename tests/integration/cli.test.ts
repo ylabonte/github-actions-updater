@@ -119,22 +119,15 @@ describe('cli end-to-end', () => {
     expect(r.exitCode).toBe(0);
   }, 30_000);
 
-  it('CLI flags override config values', async () => {
-    await writeFile(
-      join(cwd, '.github', 'workflows', 'ci.yml'),
-      'jobs:\n  x:\n    steps:\n      - uses: actions/checkout@v3\n',
-    );
-    await writeFile(join(cwd, '.ghaurc.json'), JSON.stringify({ rejects: ['actions/*'] }));
-    // CLI `--reject nothing-matches/**` overrides the config's `rejects: ['actions/*']`,
-    // so the action is no longer filtered out and reaches the (unresolvable, no-network)
-    // GitHub fetch. We assert the entry is present, not its resolution outcome.
-    const r = await runCli(['--json', '--reject', 'nothing-matches/**'], cwd);
-    const data = JSON.parse(r.stdout) as {
-      entries: { action: string }[];
-    };
-    expect(data.entries.length).toBeGreaterThan(0);
-    expect(data.entries[0]?.action).toBe('actions/checkout');
-  }, 30_000);
+  // CLI-flag-overrides-config-values precedence is covered at the unit level in
+  // `tests/unit/cli.test.ts` via direct calls to `mergeOptions(program, config)`.
+  // A previous integration test exercised the path end-to-end but had to let
+  // an unrejected `actions/checkout@v3` reach the resolver (to assert the
+  // override changed which entries appeared), which made a real unauthenticated
+  // GitHub API request on CI runners — flaky under rate limiting. The unit-level
+  // coverage is comprehensive (every config-mergeable option, both directions
+  // including the new --no-allow-branch-pin / --no-fail-on-outdated paths) and
+  // offline, so no integration test for this precedence specifically.
 
   it('exits 2 with a clear error message when the config is malformed', async () => {
     await writeFile(join(cwd, '.ghaurc.json'), JSON.stringify({ target: 'made-up-target' }));

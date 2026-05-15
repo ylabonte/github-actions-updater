@@ -19,11 +19,12 @@ inputs:
     default: '1'
   target:
     # Default is left literally empty (rather than `latest`) so a `target`
-    # value in a repo's `.ghaurc` / `ghau.config.*` is not silently masked by
-    # the Action's pass-through. When empty, the script below skips `--target`
-    # entirely and the CLI picks its own default (`latest`) or the config file's
-    # value, whichever is set. The description spells out the effective default
-    # for the Marketplace UI.
+    # value in a repo's data-only config file (`.ghaurc.json`,
+    # `ghau.config.json`, or a `ghau` key in `package.json`) is not silently
+    # masked by the Action's pass-through. When empty, the script below skips
+    # `--target` entirely and the CLI picks its own default (`latest`) or the
+    # config file's value, whichever is set. The description spells out the
+    # effective default for the Marketplace UI.
     description: 'Update target policy: `latest`, `major`, `minor`, `patch`, `greatest`. When empty (the default) the CLI uses its own default (`latest`) unless a repo config file overrides it.'
     required: false
     default: ''
@@ -121,10 +122,11 @@ runs:
         # args array so npx receives them as separate argv entries — no shell re-parsing.
         args=(--json)
 
-        # `--target` is conditional so a `target` value in the user's repo config
-        # (`.ghaurc` / `ghau.config.*`) is not masked by the Action's pass-through.
-        # When the input is empty, we let the CLI fall back to its own default or
-        # the config file's value, whichever is set.
+        # `--target` is conditional so a `target` value in the user's repo
+        # data-only config file (`.ghaurc.json`, `ghau.config.json`, or a
+        # `ghau` key in `package.json`) is not masked by the Action's
+        # pass-through. When the input is empty, we let the CLI fall back to
+        # its own default or the config file's value, whichever is set.
         [[ -n "$GHAU_TARGET" ]] && args+=(--target "$GHAU_TARGET")
 
         # `read -r -a` word-splits on IFS without invoking pathname expansion. An
