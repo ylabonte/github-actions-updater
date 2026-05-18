@@ -49,6 +49,19 @@ jobs:
       # npm 11.5+ is required for trusted-publishing OIDC. Node 20 ships with npm 10.
       - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
+      # Inline CI gate: re-run the same checks the CI workflow does on push to
+      # main. CI and Release fire in parallel on `push: main`, so without an
+      # explicit gate here a merge that broke lint/typecheck/test could still
+      # trigger publish (changesets/action would happily run `pnpm release` on
+      # a red tree, and a regression that doesn't crash `pnpm build` would
+      # ship). The four checks below mirror CLAUDE.md's pre-commit discipline
+      # and the steps in `ci.yml`; duplication is cheap on a warm pnpm cache
+      # (~30s total) and the alternative (workflow_run trigger, or merging
+      # the workflows) trades that off against worse separation of concerns.
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
       - run: pnpm build
       - name: Create release PR or publish
         id: changesets
