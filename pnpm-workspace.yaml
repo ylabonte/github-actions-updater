@@ -1,2 +1,36 @@
+# pnpm 11 supersedes the older `onlyBuiltDependencies` with `allowBuilds`. Keep
+# the legacy key around for now (pnpm 11.1.x still reads both) so the file is
+# parseable by older pnpm if anyone has it locally.
+allowBuilds:
+  esbuild: true
 onlyBuiltDependencies:
   - esbuild
+
+# pnpm 11 ships a supply-chain `minimumReleaseAge` policy that refuses
+# lockfile entries younger than ~24h. Auto-populated by pnpm at install
+# time when a fresh dep bump pulls in versions inside that window; the
+# explicit allowlist below makes the bypass auditable rather than implicit.
+# Entries can be pruned once the listed versions have aged out of the
+# global policy window.
+minimumReleaseAgeExclude:
+  - '@typescript-eslint/eslint-plugin@8.59.4'
+  - '@typescript-eslint/parser@8.59.4'
+  - '@typescript-eslint/project-service@8.59.4'
+  - '@typescript-eslint/scope-manager@8.59.4'
+  - '@typescript-eslint/tsconfig-utils@8.59.4'
+  - '@typescript-eslint/type-utils@8.59.4'
+  - '@typescript-eslint/types@8.59.4'
+  - '@typescript-eslint/typescript-estree@8.59.4'
+  - '@typescript-eslint/utils@8.59.4'
+  - '@typescript-eslint/visitor-keys@8.59.4'
+  - tsx@4.22.2
+  - typescript-eslint@8.59.4
+
+# Migrated from package.json's `pnpm.overrides` in this PR. pnpm 11 no longer
+# reads the `pnpm` field in package.json; the new home for overrides is here.
+# Same security rationale as before — these are minimum-version floors that
+# pull transitively-resolved vulnerable versions up to a patched one without
+# requiring every dep to bump its own pin.
+overrides:
+  esbuild: '>=0.25.0'
+  vite: '>=6.4.2'
