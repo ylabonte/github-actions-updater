@@ -10,7 +10,7 @@ pnpm build
 pnpm test:coverage
 ```
 
-You need Node 20+ and pnpm 9+.
+You need Node 22+ and pnpm 9+.
 
 ## Development loop
 

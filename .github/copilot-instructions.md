@@ -8,7 +8,7 @@ guidance in the repo. Keep this file in sync whenever the workflow rules in
 ## What this project is
 
 A CLI (`ghau`) that scans `.github/workflows/*.{yml,yaml}` for outdated remote `uses:`
-references and optionally rewrites them. TypeScript ESM, Node 20+, pnpm. Tested with
+references and optionally rewrites them. TypeScript ESM, Node 22+, pnpm. Tested with
 Vitest, linted with ESLint strict-type-checked + unicorn, formatted with Prettier.
 
 ## Workflow rules
