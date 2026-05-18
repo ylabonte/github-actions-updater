@@ -44,9 +44,12 @@ jobs:
       # dropping `registry-url:` costs nothing.
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
-      # npm 11.5+ is required for trusted-publishing OIDC. Node 20 ships with npm 10.
+      # npm 11.5+ is required for trusted-publishing OIDC. Node 24 ships with
+      # npm 11.5+ already, so this is defensive only — it keeps the release
+      # path resilient if the `node-version` above is ever downgraded to a
+      # release line that still bundles npm 10 (Node 22 does).
       - run: npm install -g npm@latest
       - run: pnpm install --frozen-lockfile
       # Inline CI gate: re-run the same checks the CI workflow does on push to
