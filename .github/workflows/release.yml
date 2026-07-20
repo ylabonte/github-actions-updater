@@ -30,7 +30,7 @@ jobs:
       # App-authored, which triggers downstream workflows. Setting env
       # GITHUB_TOKEN alone is not enough — checkout's persisted credential is
       # what `git push` actually uses.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
@@ -42,7 +42,7 @@ jobs:
       # and `changeset publish` exits 1. Trusted publishing only kicks in when
       # *no* token is configured. Default registry is registry.npmjs.org, so
       # dropping `registry-url:` costs nothing.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
