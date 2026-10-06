@@ -5,6 +5,12 @@ export default defineConfig({
     environment: 'node',
     globals: false,
     include: ['tests/**/*.test.ts'],
+    // Many unit tests do real filesystem I/O (mkdtemp + writeFile + scan).
+    // On GitHub's hosted Windows runners that I/O occasionally stalls for
+    // several seconds (Defender real-time scanning of fresh temp files), which
+    // tripped the 5s default on a test that takes ~100ms elsewhere. Give
+    // Windows headroom without masking genuine hangs on the other platforms.
+    testTimeout: process.platform === 'win32' ? 20_000 : 5000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov', 'json-summary'],
