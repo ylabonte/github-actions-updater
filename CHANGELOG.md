@@ -1,5 +1,16 @@
 # github-actions-updater
 
+## 1.3.0
+
+### Minor Changes
+
+- 092dff7: Raise the minimum supported Node.js version to `^22.18.0 || >=24` (previously `>=22.0.0`). The updated runtime dependencies `commander` 15 and `cosmiconfig` 10 require it. Node 26 is now part of the tested CI matrix.
+
+### Patch Changes
+
+- 72e05b9: `ghau --version` now prints the installed package version instead of `0.0.0`.
+- 493c1d6: Config discovery no longer reads cosmiconfig's global config directory (`~/.config/ghau/`, `~/Library/Preferences/ghau/`, `%APPDATA%/ghau/Config/`). Previously a `config.{json,yaml,js,cjs,mjs,ts}` there was picked up, and the JavaScript variants were executed, despite the documented data-only config surface. Only `package.json#ghau`, `.ghaurc{,.json,.yaml,.yml}` and `ghau.config.json` in the working directory and its ancestors are considered.
+
 ## 1.2.0
 
 ### Minor Changes
