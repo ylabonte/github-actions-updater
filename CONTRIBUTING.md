@@ -10,7 +10,7 @@ pnpm build
 pnpm test:coverage
 ```
 
-You need Node 22+ and pnpm 9+.
+You need Node 22.18+ or 24+ (26 recommended) and pnpm 12 — the exact version is pinned via `packageManager` in `package.json`.
 
 ## Development loop
 

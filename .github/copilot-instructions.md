@@ -8,12 +8,12 @@ guidance in the repo. Keep this file in sync whenever the workflow rules in
 ## What this project is
 
 A CLI (`ghau`) that scans `.github/workflows/*.{yml,yaml}` for outdated remote `uses:`
-references and optionally rewrites them. TypeScript ESM, Node 22+, pnpm. Tested with
+references and optionally rewrites them. TypeScript ESM, Node 22.18+ / 24+, pnpm. Tested with
 Vitest, linted with ESLint strict-type-checked + unicorn, formatted with Prettier.
 
 ## Workflow rules
 
-1. **Format, lint, typecheck, and test before every commit.** Run `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test` and fix anything red. `format:check` is separate from `lint` and easy to forget when only editing markdown. CI repeats these on three OSes and two Node versions; don't waste a matrix run.
+1. **Format, lint, typecheck, and test before every commit.** Run `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test` and fix anything red. `format:check` is separate from `lint` and easy to forget when only editing markdown. CI repeats these on three OSes and three Node versions; don't waste a matrix run.
 2. **Track work in tasks.** Anything bigger than a one-line tweak: create discrete tasks, mark them `in_progress`/`completed` as you go. Don't batch.
 3. **Changesets — interactively.** Before adding or modifying a `.changeset/*.md` entry, ask the user: add to existing, new file, or skip?
 4. **Atomic commits.** Conventional prefixes (`feat`, `fix`, `chore`, `docs`, `test`, `refactor`; `!` for breaking). Body explains _why_.
