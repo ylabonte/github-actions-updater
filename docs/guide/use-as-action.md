@@ -45,13 +45,13 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ylabonte/github-actions-updater@v1
         id: ghau
         with:
           write: true
           commit: true
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v8
         if: steps.ghau.outputs.changes > 0
         with:
           branch: chore/update-github-actions
@@ -84,12 +84,12 @@ jobs:
   drift:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ylabonte/github-actions-updater@v1
         id: ghau
       - name: Comment if drift
         if: steps.ghau.outputs.outdated > 0
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           REPORT: ${{ steps.ghau.outputs.json }}
         with:
