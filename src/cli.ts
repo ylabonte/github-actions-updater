@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { Command, Option } from '@commander-js/extra-typings';
@@ -22,7 +22,13 @@ import { TARGETS, type Resolution } from './core/types.js';
 import { renderTable } from './io/output/table.js';
 import { renderJson } from './io/output/json.js';
 
-const VERSION = '0.0.0';
+// `../package.json` is the package root from both `src/cli.ts` (dev) and
+// `dist/cli.js` (published), and npm always ships package.json.
+const VERSION = (
+  JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+    version: string;
+  }
+).version;
 
 export function buildProgram() {
   return new Command()
@@ -87,8 +93,7 @@ export function mergeOptions(program: ReturnType<typeof buildProgram>, config: G
   const cliOpts = program.opts();
   const fromConfig = <T>(name: string, configValue: T | undefined): T | undefined => {
     if (configValue === undefined) return undefined;
-    if (program.getOptionValueSource(name) !== 'default') return undefined;
-    return configValue;
+    return program.getOptionValueSource(name) === 'default' ? configValue : undefined;
   };
   return {
     ...cliOpts,
@@ -129,7 +134,7 @@ export async function main(argv: readonly string[]): Promise<number> {
   const opts = mergeOptions(program, configValues);
   const useColor = opts.color && !opts.json;
 
-  if (opts.verbose && configFilepath !== null) {
+  if (configFilepath !== null && opts.verbose) {
     process.stderr.write(pc.dim(`Config: ${toPosixPath(configFilepath)}\n`));
   }
 
@@ -203,7 +208,7 @@ export async function main(argv: readonly string[]): Promise<number> {
             message: 'Open the editor to review and confirm the commit message?',
             initialValue: true,
           });
-          if (isCancel(proceed) || !proceed) {
+          if (!proceed || isCancel(proceed)) {
             process.stderr.write(pc.yellow('⚠ Skipped commit: cancelled.\n'));
             return 0;
           }
@@ -219,8 +224,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     // "fail when stale" behavior for CI gating.
     if (allError) return 2;
     if (hasError) return 1;
-    if (opts.failOnOutdated && resolutions.some((r) => r.outdated)) return 1;
-    return 0;
+    return opts.failOnOutdated && resolutions.some((r) => r.outdated) ? 1 : 0;
   } catch (error) {
     spinner?.fail();
     process.stderr.write(pc.red(`✖ ${(error as Error).message}\n`));
