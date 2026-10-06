@@ -30,7 +30,15 @@ export default defineConfig(
       },
     },
     rules: {
-      'unicorn/prevent-abbreviations': 'off',
+      // `prevent-abbreviations` was renamed to `name-replacements` in unicorn 68;
+      // keep it off — short names like `opts`/`deps`/`ref` are idiomatic here.
+      'unicorn/name-replacements': 'off',
+      // Both rewrite the ` * `-prefixed JSDoc style used throughout the repo.
+      'unicorn/no-asterisk-prefix-in-documentation-comments': 'off',
+      'unicorn/single-line-block-comment-style': 'off',
+      // Would rename option fields (e.g. `noEdit`) that are part of the
+      // programmatic API surface.
+      'unicorn/consistent-boolean-name': 'off',
       'unicorn/no-null': 'off',
       'unicorn/no-array-reduce': 'off',
       'unicorn/prefer-top-level-await': 'off',
@@ -46,6 +54,23 @@ export default defineConfig(
         'error',
         { allowNumber: true, allowBoolean: true },
       ],
+    },
+  },
+  {
+    // The shebang makes unicorn treat cli.ts as a script, but its exports
+    // (`buildProgram`, `mergeOptions`, `main`, …) are deliberate seams for the
+    // unit tests and `docs:gen-cli`; the bootstrap is guarded by
+    // `isInvokedDirectly`, so importing the module has no side effects.
+    files: ['src/cli.ts'],
+    rules: {
+      'unicorn/no-exports-in-scripts': 'off',
+    },
+  },
+  {
+    // Tool config files are a single `export default defineConfig(...)`.
+    files: ['*.config.{js,ts}'],
+    rules: {
+      'unicorn/no-top-level-side-effects': 'off',
     },
   },
   {

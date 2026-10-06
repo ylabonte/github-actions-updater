@@ -56,7 +56,7 @@ describe('resolveAuth', () => {
 
   it('ignores empty/whitespace tokens', async () => {
     const r = await resolveAuth({
-      explicitToken: '   ',
+      explicitToken: ' '.repeat(3),
       env: { GITHUB_TOKEN: '' },
       runGhCli: async () => '  ',
     });

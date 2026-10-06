@@ -39,20 +39,20 @@ export function rewriteContent(
   let changes = 0;
   for (const r of sorted) {
     const { offset, endOffset } = r.reference.location;
-    const lineEnd = findLineEnd(content, endOffset);
-    const segmentAfterValue = content.slice(endOffset, lineEnd);
-    const commentMatch = /^(\s+)#\s*(.*?)\s*$/.exec(segmentAfterValue);
 
     let newSegment = r.newValue;
-    if (r.newComment !== undefined) {
+    if (r.newComment === undefined) {
+      // Only the value is replaced; whatever trails it (e.g. an existing
+      // `# comment`) stays as-is.
+      content = content.slice(0, offset) + newSegment + content.slice(endOffset);
+    } else {
+      // Replace everything up to end-of-line: drop the old comment and, unless
+      // `newComment` is null, write the new one.
       if (r.newComment !== null) {
         newSegment += `  # ${r.newComment}`;
       }
-      content = content.slice(0, offset) + newSegment + content.slice(lineEnd);
-    } else if (commentMatch) {
-      content = content.slice(0, offset) + newSegment + content.slice(endOffset);
-    } else {
-      content = content.slice(0, offset) + newSegment + content.slice(endOffset);
+      content =
+        content.slice(0, offset) + newSegment + content.slice(findLineEnd(content, endOffset));
     }
     changes++;
   }

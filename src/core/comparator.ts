@@ -29,7 +29,7 @@ export function pickLatest(
 
   const includePre = target === 'greatest';
   const eligible = candidates
-    .filter((c) => (includePre ? true : isStable(c.tag)))
+    .filter((c) => includePre || isStable(c.tag))
     .filter((c) => filterByTarget(current, c.tag, target));
 
   const first = eligible[0];
@@ -74,18 +74,16 @@ function filterByTarget(current: ParsedTag | null, candidate: ParsedTag, target:
  * Returns `'none'` when latest is null, equal/older, or within the current's implicit track.
  */
 export function classifyDiff(current: ParsedTag | null, latest: ParsedTag | null): UpdateLevel {
-  if (!current || !latest) return 'none';
-  if (semver.lte(latest.version, current.version)) return 'none';
+  if (!current || !latest || semver.lte(latest.version, current.version)) return 'none';
 
   const track = trackLevel(current);
   const sameMajor = latest.version.major === current.version.major;
-  const sameMinor = sameMajor && latest.version.minor === current.version.minor;
-
   if (track === 'major' && sameMajor) return 'none';
+
+  const sameMinor = sameMajor && latest.version.minor === current.version.minor;
   if (track === 'minor' && sameMinor) return 'none';
 
   if (!sameMajor) return 'major';
   if (!sameMinor) return 'minor';
-  if (latest.version.patch !== current.version.patch) return 'patch';
-  return 'none';
+  return latest.version.patch === current.version.patch ? 'none' : 'patch';
 }

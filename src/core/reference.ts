@@ -91,9 +91,7 @@ export function parseReference(rawValue: string): ParsedRef | null {
 
 /** Heuristic: looks like a tag if it starts with `v` followed by a digit, or is pure-numeric semver. */
 function looksLikeTag(ref: string): boolean {
-  if (/^v\d/.test(ref)) return true;
-  if (/^\d+(\.\d+){0,2}([-+].+)?$/.test(ref)) return true;
-  return false;
+  return /^v\d/.test(ref) || /^\d+(\.\d+){0,2}([-+].+)?$/.test(ref);
 }
 
 /**

@@ -53,9 +53,9 @@ export async function resolveSha(
     outdated: latestSha !== null && latestSha !== ref.ref && level !== 'none',
     latestSha,
     latestComment: latest ? latest.raw : null,
-    ...(ref.comment
-      ? {}
-      : { error: 'SHA pinned without version comment — cannot determine current version' }),
+    ...(!ref.comment && {
+      error: 'SHA pinned without version comment — cannot determine current version',
+    }),
   };
   return result;
 }

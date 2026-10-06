@@ -78,12 +78,15 @@ export async function commitUpdates(
       ? ['commit', '-v', '-e', '-F', templatePath]
       : ['commit', '-v', '-F', templatePath];
     const code = await spawnFn(commitArgs, cwd);
-    if (code === 0) return { committed: true };
-    return { committed: false, reason: `git commit exited with code ${code}` };
+    return code === 0
+      ? { committed: true }
+      : { committed: false, reason: `git commit exited with code ${code}` };
   } finally {
-    await unlink(templatePath).catch(() => {
-      /* ignore */
-    });
+    try {
+      await unlink(templatePath);
+    } catch {
+      // Best-effort cleanup of our own tmpfile; nothing useful to report.
+    }
   }
 }
 
@@ -192,6 +195,8 @@ async function isGitRepo(cwd: string): Promise<boolean> {
 function spawnGitCommit(args: readonly string[], cwd: string): Promise<number> {
   return new Promise((resolve) => {
     const child = spawn('git', [...args], { cwd, stdio: 'inherit' });
+    // `code` is `number | null`; a default parameter would only cover `undefined`.
+    // eslint-disable-next-line unicorn/prefer-default-parameters
     child.on('close', (code) => {
       resolve(code ?? 0);
     });

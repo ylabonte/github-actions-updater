@@ -24,8 +24,7 @@ export function parseWorkflow(file: WorkflowFile): Reference[] {
   walk(doc.contents, (node) => {
     if (!isMap(node)) return;
     for (const pair of node.items) {
-      if (!isScalar(pair.key) || pair.key.value !== 'uses') continue;
-      if (!isScalar(pair.value)) continue;
+      if (!isScalar(pair.key) || pair.key.value !== 'uses' || !isScalar(pair.value)) continue;
       const scalar = pair.value;
       if (typeof scalar.value !== 'string') continue;
       const range = scalar.range;

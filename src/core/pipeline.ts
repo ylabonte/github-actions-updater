@@ -32,8 +32,8 @@ export async function runPipeline(
   const references: Reference[] = [];
   for (const file of files) {
     for (const ref of parseWorkflow(file)) {
-      if (ref.parsed.kind === 'local') continue;
-      if (!includeRef(ref, options.filters, options.rejects)) continue;
+      if (ref.parsed.kind === 'local' || !includeRef(ref, options.filters, options.rejects))
+        continue;
       references.push(ref);
     }
   }
@@ -80,7 +80,7 @@ function includeRef(
   rejects: readonly string[] | undefined,
 ): boolean {
   const name = actionName(ref);
-  if (filters && filters.length > 0 && !filters.some((p) => minimatch(name, p))) return false;
+  if (filters && filters.length > 0 && filters.every((p) => !minimatch(name, p))) return false;
   if (rejects?.some((p) => minimatch(name, p))) return false;
   return true;
 }

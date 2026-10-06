@@ -52,7 +52,7 @@ export async function applyUpdates(
   for (const [file, bucket] of byFile) {
     const original = await readFile(file, 'utf8');
     const { content, changes } = rewriteContent(original, bucket.replacements);
-    if (changes > 0 && content !== original) {
+    if (content !== original && changes > 0) {
       await writeWorkflow(file, content);
       applied.push(...bucket.resolutions);
     }
@@ -72,8 +72,8 @@ function buildReplacement(r: Resolution): Replacement | null {
   }
   if (parsed.kind === 'sha-pinned') {
     const sha = (r as ShaResolution).latestSha;
-    const comment = (r as ShaResolution).latestComment ?? r.latest;
     if (!sha) return null;
+    const comment = (r as ShaResolution).latestComment ?? r.latest;
     return {
       reference: r.reference,
       newValue: `${parsed.owner}/${parsed.repo}${parsed.subpath ? `/${parsed.subpath}` : ''}@${sha}`,

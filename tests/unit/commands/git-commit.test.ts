@@ -23,7 +23,7 @@ const tagRes = (raw: string, current: string, latest: string): Resolution => ({
 describe('buildCommitMessage', () => {
   it('uses a single-action headline when there is exactly one update', () => {
     const msg = buildCommitMessage([tagRes('actions/checkout@v3', 'v3', 'v4.2.0')]);
-    expect(msg.split('\n')[0]).toBe('chore(deps): update actions/checkout from v3 to v4.2.0');
+    expect(msg.split('\n', 1)[0]).toBe('chore(deps): update actions/checkout from v3 to v4.2.0');
   });
 
   it('uses a grouped headline when there are multiple updates', () => {
@@ -31,7 +31,7 @@ describe('buildCommitMessage', () => {
       tagRes('actions/checkout@v3', 'v3', 'v4.2.0'),
       tagRes('actions/setup-node@v3.8.2', 'v3.8.2', 'v4.0.4'),
     ]);
-    expect(msg.split('\n')[0]).toBe('chore(deps): update GitHub Actions (2 updates)');
+    expect(msg.split('\n', 1)[0]).toBe('chore(deps): update GitHub Actions (2 updates)');
   });
 
   it('lists one bullet per applied resolution', () => {

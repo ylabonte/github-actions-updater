@@ -41,7 +41,7 @@ function makeStub(
   overrides: Partial<{
     tags: { name: string; sha: string }[];
     branch: string;
-    tagRef: { type: 'commit' | 'tag'; sha: string } | 'notfound';
+    tagRef: 'notfound' | { type: 'commit' | 'tag'; sha: string };
     tagObject: { sha: string };
   }> = {},
 ): Stub {

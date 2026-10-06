@@ -15,9 +15,11 @@ const program = buildProgram();
 const help = program.helpInformation();
 
 const content = await readFile(refFile, 'utf8');
+// Replacer function, not a string: a `$&` / `` $` `` / `$'` sequence in the help
+// text would otherwise be expanded as a replacement pattern.
 const updated = content.replace(
   /<!-- AUTOGEN:BEGIN -->[\s\S]*?<!-- AUTOGEN:END -->/,
-  `<!-- AUTOGEN:BEGIN -->\n\n\`\`\`\n${help.trim()}\n\`\`\`\n\n<!-- AUTOGEN:END -->`,
+  () => `<!-- AUTOGEN:BEGIN -->\n\n\`\`\`\n${help.trim()}\n\`\`\`\n\n<!-- AUTOGEN:END -->`,
 );
 
 await writeFile(refFile, updated, 'utf8');

@@ -34,11 +34,9 @@ export async function runCheck(deps: ResolverDeps, options: CheckOptions): Promi
 
   const exitCode: 0 | 1 | 2 = allError
     ? 2
-    : hasError
+    : hasError || (hasOutdated && options.failOnOutdated)
       ? 1
-      : options.failOnOutdated && hasOutdated
-        ? 1
-        : 0;
+      : 0;
 
   const text = options.json
     ? JSON.stringify(renderJson(resolutions), null, 2)
