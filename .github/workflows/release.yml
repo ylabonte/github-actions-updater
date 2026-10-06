@@ -25,12 +25,11 @@ jobs:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
       # Pass the App token to checkout so the credential persisted into git
-      # config is the App's, not the default GITHUB_TOKEN. `git push` from
-      # changesets/action (and from later steps in this job) is then
-      # App-authored, which triggers downstream workflows. Setting env
-      # GITHUB_TOKEN alone is not enough — checkout's persisted credential is
-      # what `git push` actually uses.
-      - uses: actions/checkout@v6
+      # config is the App's, not the default GITHUB_TOKEN. The floating-tag
+      # `git push` further down is then App-authored, which triggers
+      # downstream workflows. (changesets/action gets the same token through
+      # its own `github-token` input.)
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
@@ -42,11 +41,11 @@ jobs:
       # and `changeset publish` exits 1. Trusted publishing only kicks in when
       # *no* token is configured. Default registry is registry.npmjs.org, so
       # dropping `registry-url:` costs nothing.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
           cache: pnpm
-      # npm 11.5+ is required for trusted-publishing OIDC. Node 24 ships with
+      # npm 11.5+ is required for trusted-publishing OIDC. Node 24+ ships with
       # npm 11.5+ already, so this is defensive only — it keeps the release
       # path resilient if the `node-version` above is ever downgraded to a
       # release line that still bundles npm 10 (Node 22 does).
@@ -68,12 +67,16 @@ jobs:
       - run: pnpm build
       - name: Create release PR or publish
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2
+        # v2 pushes the release commit and tags through the GitHub API using
+        # `github-token` (no longer read from env or checkout's credential).
+        # Passing the App token keeps them App-authored, so downstream
+        # workflows still trigger.
         with:
-          publish: pnpm release
-          version: pnpm exec changeset version
+          github-token: ${{ steps.app-token.outputs.token }}
+          publish-script: pnpm release
+          version-script: pnpm exec changeset version
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           NPM_CONFIG_PROVENANCE: 'true'
 
       # When a publish actually happened, force-push the floating major-version tag
