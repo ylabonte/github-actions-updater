@@ -9,7 +9,7 @@ the same rules every session.
 - **What it is.** A CLI (`ghau`) that scans `.github/workflows/*.{yml,yaml}` for outdated
   remote `uses:` references and optionally rewrites them in place. Think `ncu`, but
   for GitHub Actions.
-- **Stack.** TypeScript ESM, Node 22+, pnpm. Vitest + `@vitest/coverage-v8`. ESLint
+- **Stack.** TypeScript ESM, Node 22.18+ / 24+, pnpm. Vitest + `@vitest/coverage-v8`. ESLint
   (strict-type-checked + unicorn) + Prettier. VitePress for docs. Changesets for
   releases. Targets `github-actions-updater` on npm; binary is `ghau`.
 - **Architecture.** `src/core/` (scanner, parser, comparator, resolvers, auth) is the

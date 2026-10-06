@@ -94,8 +94,6 @@ describe('runPipeline', () => {
   });
 
   it('captures resolver errors as resolution.error', async () => {
-    const failing: typeof noopDocker extends infer T ? T : never = noopDocker;
-    void failing;
     const github = {
       async listTags() {
         throw new Error('boom');
