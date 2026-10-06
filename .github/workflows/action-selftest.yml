@@ -17,9 +17,18 @@ jobs:
     name: Run the local composite action against fixtures
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      # Check the action out into a subdirectory rather than the workspace root.
+      # The action runs `npx -p github-actions-updater@<version> ghau` from the
+      # workspace root, and npm treats a root `package.json` whose name/version
+      # satisfies that spec as "already installed locally" — so in *this* repo
+      # it skips the install and fails with `ghau: not found` (no node_modules).
+      # Consumer repos never have that root package name, so keeping the
+      # workspace root package-less reproduces their situation faithfully.
+      - uses: actions/checkout@v7
+        with:
+          path: action
 
-      # Lay down a temp workspace whose layout matches what `uses: ./` will scan when
+      # Lay down a temp workspace whose layout matches what `uses: ./action` will scan when
       # invoked from the action's repo. We point the action at a per-job `.github/workflows/`
       # directory full of fixtures, then assert the JSON output mentions the expected
       # actions without depending on what's actually outdated upstream.
@@ -55,7 +64,7 @@ jobs:
       - name: Run the action
         id: ghau
         if: steps.published.outputs.yes == 'true'
-        uses: ./
+        uses: ./action
         with:
           workflows: ${{ github.workspace }}/.selftest/.github/workflows
 
