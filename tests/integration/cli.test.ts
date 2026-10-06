@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,11 +26,15 @@ interface RunResult {
  * blanking the GitHub token — tests that need network responses are unit-tested separately
  * with fake clients.
  */
-function runCli(args: readonly string[], cwd: string): Promise<RunResult> {
+function runCli(
+  args: readonly string[],
+  cwd: string,
+  env: Readonly<Record<string, string>> = {},
+): Promise<RunResult> {
   return new Promise((resolve) => {
     const child = spawn(TSX, [CLI, ...args], {
       cwd,
-      env: { ...process.env, GITHUB_TOKEN: '', GH_TOKEN: '', PATH: process.env['PATH'] },
+      env: { ...process.env, GITHUB_TOKEN: '', GH_TOKEN: '', PATH: process.env['PATH'], ...env },
       shell: IS_WIN,
     });
     let stdout = '';
@@ -40,10 +45,31 @@ function runCli(args: readonly string[], cwd: string): Promise<RunResult> {
     child.stderr.on('data', (chunk: Buffer) => {
       stderr += chunk.toString();
     });
+    // `code` is `number | null`; a default parameter would only cover `undefined`.
+    // eslint-disable-next-line unicorn/prefer-default-parameters
     child.on('close', (code) => {
       resolve({ stdout, stderr, exitCode: code ?? 0 });
     });
   });
+}
+
+/** Env that points every home/config-dir lookup at `home`, across platforms. */
+function fakeHomeEnv(home: string): Record<string, string> {
+  return {
+    HOME: home,
+    USERPROFILE: home,
+    XDG_CONFIG_HOME: join(home, '.config'),
+    APPDATA: join(home, 'AppData', 'Roaming'),
+  };
+}
+
+/** cosmiconfig's (env-paths) global config dir for `ghau` on Linux, macOS and Windows. */
+function globalConfigDirs(home: string): string[] {
+  return [
+    join(home, '.config', 'ghau'),
+    join(home, 'Library', 'Preferences', 'ghau'),
+    join(home, 'AppData', 'Roaming', 'ghau', 'Config'),
+  ];
 }
 
 describe('cli end-to-end', () => {
@@ -71,9 +97,12 @@ describe('cli end-to-end', () => {
     expect(r.exitCode).toBe(0);
   }, 30_000);
 
-  it('prints version', async () => {
+  it('prints the version from package.json', async () => {
+    const pkg = JSON.parse(await readFile(join(__dirname, '..', '..', 'package.json'), 'utf8')) as {
+      version: string;
+    };
     const r = await runCli(['--version'], cwd);
-    expect(r.stdout.trim()).toMatch(/\d+\.\d+\.\d+/);
+    expect(r.stdout.trim()).toBe(pkg.version);
     expect(r.exitCode).toBe(0);
   }, 30_000);
 
@@ -136,4 +165,41 @@ describe('cli end-to-end', () => {
     expect(r.stderr).toContain('target');
     expect(r.exitCode).toBe(2);
   }, 30_000);
+
+  // cosmiconfig's `global` search strategy (implied by any `stopDir`) also
+  // probes an env-paths config dir for `config.{json,yaml,js,ts,cjs,mjs}`,
+  // regardless of our `searchPlaces`. These run in a child process because
+  // env-paths captures the home directory at module load, so the fake home
+  // has to be in place before the CLI starts.
+  describe("ignores cosmiconfig's global config directory", () => {
+    it('never executes a global config.{js,cjs,mjs}', async () => {
+      const home = join(cwd, 'home');
+      const marker = join(cwd, 'executed.marker');
+      const body = `require('node:fs').writeFileSync(${JSON.stringify(marker)}, 'x');\nmodule.exports = {};\n`;
+      for (const dir of globalConfigDirs(home)) {
+        await mkdir(dir, { recursive: true });
+        await writeFile(join(dir, 'config.js'), body);
+        await writeFile(join(dir, 'config.cjs'), body);
+        await writeFile(
+          join(dir, 'config.mjs'),
+          `import { writeFileSync } from 'node:fs';\nwriteFileSync(${JSON.stringify(marker)}, 'x');\nexport default {};\n`,
+        );
+      }
+      const r = await runCli(['--json'], cwd, fakeHomeEnv(home));
+      expect(existsSync(marker)).toBe(false);
+      expect(r.exitCode).toBe(0);
+    }, 30_000);
+
+    it('never reads a global config.json', async () => {
+      const home = join(cwd, 'home');
+      for (const dir of globalConfigDirs(home)) {
+        await mkdir(dir, { recursive: true });
+        // Would fail schema validation (exit 2) if it were loaded.
+        await writeFile(join(dir, 'config.json'), JSON.stringify({ notAKey: true }));
+      }
+      const r = await runCli(['--json'], cwd, fakeHomeEnv(home));
+      expect(r.stderr).not.toContain('Invalid ghau config');
+      expect(r.exitCode).toBe(0);
+    }, 30_000);
+  });
 });

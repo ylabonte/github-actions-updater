@@ -16,6 +16,10 @@ In order of precedence within the same directory:
 - `.ghaurc.yml`
 - `ghau.config.json`
 
+Only these filenames, in the working directory and its ancestors, are
+considered. No user-level or global config directory (such as
+`~/.config/ghau/`) is read.
+
 If no config file is found, `ghau` runs with built-in defaults — the same as
 before config-file support landed.
 

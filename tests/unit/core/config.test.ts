@@ -113,6 +113,24 @@ describe('loadConfig', () => {
     expect(result).toBeNull();
   });
 
+  it('finds a config in an ancestor directory when invoked from a subdirectory', async () => {
+    const nested = path.join(cwd, 'a', 'b', 'c');
+    await mkdir(nested, { recursive: true });
+    await writeFile(path.join(cwd, '.ghaurc.json'), JSON.stringify({ target: 'minor' }));
+    const result = await loadConfig(nested);
+    expect(result?.config).toEqual({ target: 'minor' });
+    expect(result?.filepath).toBe(path.join(cwd, '.ghaurc.json'));
+  });
+
+  it('prefers the nearest config when several ancestors have one', async () => {
+    const nested = path.join(cwd, 'pkg');
+    await mkdir(nested, { recursive: true });
+    await writeFile(path.join(cwd, '.ghaurc.json'), JSON.stringify({ target: 'minor' }));
+    await writeFile(path.join(nested, '.ghaurc.json'), JSON.stringify({ target: 'patch' }));
+    const result = await loadConfig(nested);
+    expect(result?.config).toEqual({ target: 'patch' });
+  });
+
   it('resolves a relative `workflowsDir` against the config file directory', async () => {
     // Without resolution, a relative path from a config found while walking
     // up from a subdirectory would resolve against process.cwd(), not the

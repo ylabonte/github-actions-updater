@@ -10,6 +10,9 @@
  * - `.ghaurc.yml`
  * - `ghau.config.json`
  *
+ * …in the working directory and each ancestor up to the filesystem root. No
+ * user-level/global config directory is consulted.
+ *
  * **Executable formats (`.js`, `.cjs`, `.mjs`, `.ts`) are intentionally NOT
  * supported.** Allowing them would mean `ghau` runs repository-controlled
  * JavaScript during config discovery. In the composite Action path,
@@ -92,6 +95,27 @@ export interface LoadedConfig {
   readonly filepath: string;
 }
 
+type Explorer = ReturnType<typeof cosmiconfig>;
+type CosmiconfigResult = Awaited<ReturnType<Explorer['search']>>;
+
+/**
+ * Probe `startDir` and each ancestor up to the filesystem root (not just the
+ * home directory), so a repo-level `.ghaurc.json` is found even from a
+ * subdirectory outside the home tree (e.g. a CI runner's
+ * `/var/.../runner/work/...` or a tmpdir in tests). Bounded by filesystem
+ * depth; negligible cost in practice.
+ */
+async function searchUpward(explorer: Explorer, startDir: string): Promise<CosmiconfigResult> {
+  let dir = startDir;
+  for (;;) {
+    const result = await explorer.search(dir);
+    if (result !== null) return result;
+    const parent = path.dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
 /**
  * Search for a config file starting at `cwd` (defaulting to `process.cwd()`)
  * and walking up. Returns `null` when no config file is present — that path is
@@ -115,19 +139,18 @@ export async function loadConfig(cwd?: string): Promise<LoadedConfig | null> {
       '.ghaurc.yml',
       'ghau.config.json',
     ],
-    // Walk all the way to the filesystem root rather than stopping at the
-    // default (which in cosmiconfig 9 is the user's home directory). This
-    // makes the search find a repo-level `.ghaurc.json` even when the CLI
-    // is invoked from a subdirectory whose path is outside the home tree
-    // (e.g. a CI runner's `/var/.../runner/work/...` or a tmpdir path in
-    // tests). The directory walk is bounded by filesystem depth and is
-    // negligible cost in practice.
-    stopDir: '/',
+    // Probe exactly one directory per `search()` call; the upward walk is
+    // ours (below). Any `stopDir` would imply cosmiconfig's `global`
+    // strategy, which after the walk also probes an env-paths config dir
+    // (`~/.config/ghau`, `~/Library/Preferences/ghau`, `%APPDATA%/ghau/Config`)
+    // for `config.{js,ts,cjs,mjs,json,yaml}` — ignoring `searchPlaces` and
+    // executing JavaScript in breach of the data-only contract above.
+    searchStrategy: 'none',
   });
 
-  let result: Awaited<ReturnType<typeof explorer.search>>;
+  let result: CosmiconfigResult;
   try {
-    result = await explorer.search(cwd);
+    result = await searchUpward(explorer, path.resolve(cwd ?? process.cwd()));
   } catch (error) {
     // cosmiconfig's parser errors (invalid JSON/YAML in a discovered config
     // file) include the native filepath, which contains backslashes on
